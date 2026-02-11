@@ -156,7 +156,7 @@ class LogManager:
             self.logger.removeHandler(handler)
 
 
-def setup_logger():
+def setup_logger() -> logging.Logger:
     """
     设置日志记录器
 
@@ -167,7 +167,7 @@ def setup_logger():
     return log_manager.get_logger()
 
 
-def get_log_manager():
+def get_log_manager() -> LogManager:
     """
     获取日志管理器实例
     

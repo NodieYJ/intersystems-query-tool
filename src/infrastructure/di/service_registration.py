@@ -310,7 +310,11 @@ def initialize_container() -> DIContainer:
     return container
 
 
-def get_service(interface):
+from typing import TypeVar, Type
+
+T = TypeVar('T')
+
+def get_service(interface: Type[T]) -> T:
     """
     便捷函数：从全局容器获取服务
     

@@ -254,6 +254,6 @@ class PerformanceOptimizer:
 # 全局性能优化器实例
 optimizer = PerformanceOptimizer()
 
-def get_optimizer():
+def get_optimizer() -> "PerformanceOptimizer":
     """获取全局性能优化器实例"""
     return optimizer
