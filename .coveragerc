@@ -1,0 +1,33 @@
+# ===========================================
+# 代码覆盖率配置
+# ===========================================
+#
+# 由于 pip 安装问题，这里使用简化的覆盖率检查
+#
+# 使用方法:
+#   python tests/coverage_check.py
+#
+# 详细覆盖率需要安装 pytest-cov:
+#   pip install pytest pytest-cov
+#   pytest --cov=src --cov-report=term-missing
+#
+# ===========================================
+
+[coverage:run]
+source = src
+branch = True
+omit = 
+    tests/*
+    */__pycache__/*
+    */__init__.py
+    src/main.py
+
+[coverage:report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    @abstractmethod
+fail_under = 80
+show_missing = True
