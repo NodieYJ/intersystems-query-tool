@@ -1,0 +1,21 @@
+{
+    "database": {
+        "server": "localhost",
+        "port": 1972,
+        "namespace": "USER",
+        "username": "123",
+        "password": "ac55092c40483aa63fdabe379695231d$0be67057032bfac0cdc3f4d333947314ee3890bb51202b3309def4f9b3fd7622",
+        "db_type": "IRIS"
+    },
+    "application": {
+        "name": "桌面应用程序",
+        "version": "1.0.0",
+        "log_level": "INFO"
+    },
+    "ui": {
+        "default_window_width": 800,
+        "default_window_height": 600,
+        "min_window_width": 400,
+        "min_window_height": 300
+    }
+}

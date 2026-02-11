@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 现代化扁平设计样式演示</title>
+    <style>
+        /* 设计系统变量 */
+        :root {
+            --primary: #2563EB;
+            --primary-hover: #1D4ED8;
+            --primary-light: #DBEAFE;
+            --secondary: #3B82F6;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --info: #3B82F6;
+            --background: #F8FAFC;
+            --surface: #FFFFFF;
+            --border: #E2E8F0;
+            --divider: #F1F5F9;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --text-disabled: #94A3B8;
+            --text-inverse: #FFFFFF;
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+            --radius-xl: 12px;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* 布局 */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 240px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 20px 16px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--divider);
+            margin-bottom: 16px;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            padding: 10px 14px;
+            margin-bottom: 4px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            border-left: 3px solid var(--primary);
+        }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 20px;
+            left: 16px;
+            right: 16px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            margin-left: 240px;
+            padding: 24px;
+        }
+
+        /* 头部 */
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            margin: -24px -24px 24px -24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* 页面标题 */
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        /* 卡片 */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--divider);
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-title {
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: var(--primary);
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-subtitle {
+            color: var(--text-disabled);
+            font-size: 12px;
+        }
+
+        /* 按钮 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--text-inverse);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--surface);
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--primary-light);
+            border-color: var(--primary);
+        }
+
+        .btn-text {
+            background-color: transparent;
+            color: var(--primary);
+        }
+
+        .btn-text:hover {
+            background-color: var(--primary-light);
+        }
+
+        .btn-danger {
+            background-color: var(--error);
+            color: var(--text-inverse);
+        }
+
+        .btn-danger:hover {
+            background-color: #DC2626;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-lg {
+            padding: 12px 24px;
+            font-size: 16px;
+        }
+
+        /* 按钮组 */
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* 表单 */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--surface);
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border: 2px solid var(--primary);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-disabled);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        /* 表格 */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table th {
+            background-color: var(--background);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--divider);
+        }
+
+        .table tr:hover {
+            background-color: var(--background);
+        }
+
+        /* 状态标签 */
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background-color: #D1FAE5;
+            color: var(--success);
+        }
+
+        .status-warning {
+            background-color: #FEF3C7;
+            color: var(--warning);
+        }
+
+        .status-error {
+            background-color: #FEE2E2;
+            color: var(--error);
+        }
+
+        /* 颜色展示 */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .color-card {
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+            border: 2px solid var(--border);
+        }
+
+        .color-name {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .color-value {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        /* 选项卡 */
+        .tabs {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+        }
+
+        .tab-header {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: var(--background);
+        }
+
+        .tab-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .tab-item:hover {
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .tab-item.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: var(--surface);
+        }
+
+        .tab-content {
+            padding: 20px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-bottom: 16px;
+        }
+
+        .progress-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+        }
+
+        /* 树形菜单 */
+        .tree {
+            list-style: none;
+        }
+
+        .tree-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tree-item:hover {
+            background: var(--background);
+        }
+
+        .tree-children {
+            margin-left: 24px;
+            list-style: none;
+        }
+
+        /* 复选框和单选 */
+        .checkbox-group,
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checkbox-label,
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .checkbox-label input,
+        .radio-label input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        /* 代码块 */
+        .code-block {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            color: var(--text-primary);
+        }
+
+        /* 隐藏类 */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 页面内容 */
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 1000;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-title">🎨 样式演示</div>
+            <ul class="nav-menu">
+                <li class="nav-item active" onclick="showPage('overview', this)">📊 概览</li>
+                <li class="nav-item" onclick="showPage('buttons', this)">🔘 按钮样式</li>
+                <li class="nav-item" onclick="showPage('forms', this)">📝 表单控件</li>
+                <li class="nav-item" onclick="showPage('tables', this)">📋 数据表格</li>
+                <li class="nav-item" onclick="showPage('tabs', this)">🗂️ 选项卡</li>
+                <li class="nav-item" onclick="showPage('progress', this)">📊 进度指示</li>
+                <li class="nav-item" onclick="showPage('colors', this)">🎨 颜色系统</li>
+            </ul>
+            <div class="sidebar-footer">
+                UI/UX Pro Max<br>
+                现代化扁平设计
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="header">
+                <div class="header-title">🎨 现代化扁平设计样式演示</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary">帮助</button>
+                    <button class="btn btn-primary">关于</button>
+                </div>
+            </div>
+
+            <!-- 概览页面 -->
+            <div id="overview" class="page-content active">
+                <h1 class="page-title">📊 设计系统概览</h1>
+                <p class="page-subtitle">现代化扁平设计系统 - 基于 UI/UX Pro Max • 专业、清晰、现代的桌面应用界面设计</p>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">颜色变量</div>
+                        <div class="stat-value">12+</div>
+                        <div class="stat-subtitle">主色/功能色/中性色</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">组件样式</div>
+                        <div class="stat-value">20+</div>
+                        <div class="stat-subtitle">按钮/表单/表格/导航</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">字体层级</div>
+                        <div class="stat-value">8级</div>
+                        <div class="stat-subtitle">从 11px 到 24px</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">圆角规格</div>
+                        <div class="stat-value">5级</div>
+                        <div class="stat-subtitle">从 0px 到 12px</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🎯 设计原则</div>
+                    <div style="display: grid; gap: 12px;">
+                        <div>✅ <strong>扁平化设计</strong> - 无渐变、无纹理、纯色块</div>
+                        <div>✅ <strong>现代圆角</strong> - 6-8px 统一圆角系统</div>
+                        <div>✅ <strong>层次阴影</strong> - 极浅阴影 0 1px 3px rgba(0,0,0,0.1)</div>
+                        <div>✅ <strong>微交互</strong> - 150-300ms 平滑过渡动画</div>
+                        <div>✅ <strong>无障碍</strong> - WCAG AA 对比度、键盘导航支持</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🚀 快速开始</div>
+                    <div class="code-block">
+from modern_flat_theme import get_complete_style, COLORS
+
+# 应用完整样式
+app.setStyleSheet(get_complete_style())
+
+# 使用颜色变量
+button.setStyleSheet(f"background-color: {COLORS['primary']};")
+                    </div>
+                </div>
+            </div>
+
+            <!-- 按钮页面 -->
+            <div id="buttons" class="page-content">
+                <h1 class="page-title">🔘 按钮样式</h1>
+                <p class="page-subtitle">多种按钮样式和尺寸，适应不同场景需求</p>
+
+                <div class="card">
+                    <div class="card-title">主要按钮 (Primary)</div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary">主要按钮</button>
+                        <button class="btn btn-primary">悬停状态</button>
+                        <button class="btn btn-primary" disabled style="opacity: 0.6; cursor: not-allowed;">禁用状态</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">次要按钮 (Secondary)</div>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary">次要按钮</button>
+                        <button class="btn btn-secondary">悬停查看效果</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">文字按钮 (Text)</div>
+                    <div class="btn-group">
+                        <button class="btn btn-text">文字按钮</button>
+                        <button class="btn btn-text">查看更多</button>
+                        <button class="btn btn-text">取消操作</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">危险按钮 (Danger)</div>
+                    <div class="btn-group">
+                        <button class="btn btn-danger">🗑️ 删除</button>
+                        <button class="btn btn-danger">⚠️ 警告操作</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">按钮尺寸</div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary btn-sm">小按钮</button>
+                        <button class="btn btn-primary">正常按钮</button>
+                        <button class="btn btn-primary btn-lg">大按钮</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">按钮组合</div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary">✓ 确认</button>
+                        <button class="btn btn-secondary">✕ 取消</button>
+                        <button class="btn btn-text">⋮ 更多操作</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 表单页面 -->
+            <div id="forms" class="page-content">
+                <h1 class="page-title">📝 表单控件</h1>
+                <p class="page-subtitle">文本输入、下拉选择、复选框、单选按钮等表单元素</p>
+
+                <div class="card">
+                    <div class="card-title">文本输入</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">单行文本</label>
+                            <input type="text" class="form-input" placeholder="请输入文本...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">禁用状态</label>
+                            <input type="text" class="form-input" value="禁用状态" disabled style="background: var(--background); color: var(--text-disabled);">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">密码输入</label>
+                        <input type="password" class="form-input" placeholder="请输入密码...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">多行文本</label>
+                        <textarea class="form-textarea" placeholder="请输入多行文本...&#10;支持多行输入"></textarea>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">下拉选择</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">数据库类型</label>
+                            <select class="form-select">
+                                <option>请选择...</option>
+                                <option>MySQL</option>
+                                <option>PostgreSQL</option>
+                                <option>SQLite</option>
+                                <option>SQL Server</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">端口号</label>
+                            <input type="text" class="form-input" value="3306">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">选择控件</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">复选框</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox"> 选项 1（未选中）
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" checked> 选项 2（已选中）
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" disabled> 选项 3（禁用）
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">单选按钮</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="radio"> 单选 A
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="radio" checked> 单选 B
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="radio" disabled> 单选 C（禁用）
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 表格页面 -->
+            <div id="tables" class="page-content">
+                <h1 class="page-title">📋 数据表格</h1>
+                <p class="page-subtitle">专业数据展示表格，支持状态标签和操作按钮</p>
+
+                <div class="card">
+                    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>用户数据表</span>
+                        <div class="btn-group">
+                            <button class="btn btn-primary btn-sm">➕ 添加</button>
+                            <button class="btn btn-secondary btn-sm">📥 导出</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>用户名</th>
+                                    <th>邮箱</th>
+                                    <th>部门</th>
+                                    <th>状态</th>
+                                    <th>创建时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>张三</td>
+                                    <td>zhang@example.com</td>
+                                    <td>技术部</td>
+                                    <td><span class="status status-success">● 激活</span></td>
+                                    <td>2024-01-15</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>李四</td>
+                                    <td>li@example.com</td>
+                                    <td>产品部</td>
+                                    <td><span class="status status-success">● 激活</span></td>
+                                    <td>2024-01-14</td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>王五</td>
+                                    <td>wang@example.com</td>
+                                    <td>设计部</td>
+                                    <td><span class="status status-warning">⏸ 暂停</span></td>
+                                    <td>2024-01-10</td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>赵六</td>
+                                    <td>zhao@example.com</td>
+                                    <td>运营部</td>
+                                    <td><span class="status status-success">● 激活</span></td>
+                                    <td>2024-01-08</td>
+                                </tr>
+                                <tr>
+                                    <td>5</td>
+                                    <td>钱七</td>
+                                    <td>qian@example.com</td>
+                                    <td>市场部</td>
+                                    <td><span class="status status-error">✕ 禁用</span></td>
+                                    <td>2024-01-05</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 选项卡页面 -->
+            <div id="tabs" class="page-content">
+                <h1 class="page-title">🗂️ 选项卡</h1>
+                <p class="page-subtitle">组织内容到不同选项卡，节省空间且易于导航</p>
+
+                <div class="tabs">
+                    <div class="tab-header">
+                        <div class="tab-item active" onclick="switchTab(0)">📊 数据统计</div>
+                        <div class="tab-item" onclick="switchTab(1)">⚙️ 设置</div>
+                        <div class="tab-item" onclick="switchTab(2)">📋 列表</div>
+                        <div class="tab-item" onclick="switchTab(3)">ℹ️ 关于</div>
+                    </div>
+                    <div class="tab-content">
+                        <div class="tab-panel active">
+                            <h3 style="margin-bottom: 12px;">数据统计内容</h3>
+                            <p style="color: var(--text-secondary);">这里是第一个选项卡的内容区域，可以放置数据统计图表、关键指标等内容。</p>
+                            <div style="margin-top: 16px; padding: 20px; background: var(--background); border-radius: var(--radius-md);">
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center;">
+                                    <div>
+                                        <div style="font-size: 24px; font-weight: 700; color: var(--primary);">1,234</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">总用户</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 24px; font-weight: 700; color: var(--success);">892</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">活跃用户</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 24px; font-weight: 700; color: var(--warning);">98%</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">满意度</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-panel">
+                            <h3 style="margin-bottom: 12px;">设置内容</h3>
+                            <p style="color: var(--text-secondary);">这里是设置选项卡，可以放置各种配置选项。</p>
+                            <div style="margin-top: 16px;">
+                                <div class="form-group">
+                                    <label class="form-label">系统名称</label>
+                                    <input type="text" class="form-input" value="数据查询分析工具">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">系统描述</label>
+                                    <textarea class="form-textarea">基于 PySide2 的桌面数据查询分析应用程序</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-panel">
+                            <h3 style="margin-bottom: 12px;">列表内容</h3>
+                            <p style="color: var(--text-secondary);">这里是列表选项卡，显示项目列表。</p>
+                            <ul style="margin-top: 16px; list-style: none;">
+                                <li style="padding: 8px; border-bottom: 1px solid var(--divider);">📄 项目文件 1</li>
+                                <li style="padding: 8px; border-bottom: 1px solid var(--divider);">📄 项目文件 2</li>
+                                <li style="padding: 8px; border-bottom: 1px solid var(--divider);">📄 项目文件 3</li>
+                                <li style="padding: 8px; border-bottom: 1px solid var(--divider);">📄 项目文件 4</li>
+                                <li style="padding: 8px;">📄 项目文件 5</li>
+                            </ul>
+                        </div>
+                        <div class="tab-panel">
+                            <h3 style="margin-bottom: 12px;">关于</h3>
+                            <p style="color: var(--text-secondary);">关于信息</p>
+                            <div style="margin-top: 16px; padding: 20px; background: var(--background); border-radius: var(--radius-md);">
+                                <p><strong>版本:</strong> 1.0.0</p>
+                                <p style="margin-top: 8px;"><strong>作者:</strong> UI/UX Pro Max 设计系统</p>
+                                <p style="margin-top: 8px;"><strong>技术:</strong> PySide2 + 现代化扁平设计</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 进度指示页面 -->
+            <div id="progress" class="page-content">
+                <h1 class="page-title">📊 进度指示</h1>
+                <p class="page-subtitle">进度条、状态标签等反馈组件</p>
+
+                <div class="card">
+                    <div class="card-title">进度条</div>
+                    
+                    <div class="progress-container">
+                        <div class="progress-label">进度 25%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 25%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-label">进度 50%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 50%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-label">进度 75%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 75%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-label">进度 100%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">状态标签</div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <span class="status status-success">✅ 成功</span>
+                        <span class="status status-warning">⚠️ 警告</span>
+                        <span class="status status-error">❌ 错误</span>
+                        <span class="status" style="background: var(--primary-light); color: var(--primary);">ℹ️ 信息</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 颜色系统页面 -->
+            <div id="colors" class="page-content">
+                <h1 class="page-title">🎨 颜色系统</h1>
+                <p class="page-subtitle">完整的颜色变量和使用指南</p>
+
+                <div class="card">
+                    <div class="card-title">主色</div>
+                    <div class="color-grid">
+                        <div class="color-card" style="background: var(--primary); color: white;">
+                            <div class="color-name">主色</div>
+                            <div class="color-value">#2563EB</div>
+                        </div>
+                        <div class="color-card" style="background: var(--primary-hover); color: white;">
+                            <div class="color-name">悬停</div>
+                            <div class="color-value">#1D4ED8</div>
+                        </div>
+                        <div class="color-card" style="background: var(--primary-light); color: var(--primary);">
+                            <div class="color-name">浅色背景</div>
+                            <div class="color-value">#DBEAFE</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">功能色</div>
+                    <div class="color-grid">
+                        <div class="color-card" style="background: var(--success); color: white;">
+                            <div class="color-name">成功</div>
+                            <div class="color-value">#10B981</div>
+                        </div>
+                        <div class="color-card" style="background: var(--warning); color: white;">
+                            <div class="color-name">警告</div>
+                            <div class="color-value">#F59E0B</div>
+                        </div>
+                        <div class="color-card" style="background: var(--error); color: white;">
+                            <div class="color-name">错误</div>
+                            <div class="color-value">#EF4444</div>
+                        </div>
+                        <div class="color-card" style="background: var(--info); color: white;">
+                            <div class="color-name">信息</div>
+                            <div class="color-value">#3B82F6</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">中性色</div>
+                    <div class="color-grid">
+                        <div class="color-card" style="background: var(--background); border: 1px solid var(--border);">
+                            <div class="color-name" style="color: var(--text-primary);">页面背景</div>
+                            <div class="color-value" style="color: var(--text-secondary);">#F8FAFC</div>
+                        </div>
+                        <div class="color-card" style="background: var(--surface); border: 1px solid var(--border);">
+                            <div class="color-name" style="color: var(--text-primary);">卡片表面</div>
+                            <div class="color-value" style="color: var(--text-secondary);">#FFFFFF</div>
+                        </div>
+                        <div class="color-card" style="background: var(--border);">
+                            <div class="color-name" style="color: var(--text-primary);">边框</div>
+                            <div class="color-value" style="color: var(--text-secondary);">#E2E8F0</div>
+                        </div>
+                        <div class="color-card" style="background: var(--divider);">
+                            <div class="color-name" style="color: var(--text-primary);">分隔线</div>
+                            <div class="color-value" style="color: var(--text-secondary);">#F1F5F9</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">文字色</div>
+                    <div class="color-grid">
+                        <div class="color-card" style="background: var(--text-primary); color: white;">
+                            <div class="color-name">主要文字</div>
+                            <div class="color-value">#1E293B</div>
+                        </div>
+                        <div class="color-card" style="background: var(--text-secondary); color: white;">
+                            <div class="color-name">次要文字</div>
+                            <div class="color-value">#64748B</div>
+                        </div>
+                        <div class="color-card" style="background: var(--text-disabled); color: white;">
+                            <div class="color-name">禁用文字</div>
+                            <div class="color-value">#94A3B8</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">使用指南</div>
+                    <div style="display: grid; gap: 12px; color: var(--text-secondary);">
+                        <p><strong style="color: var(--text-primary);">主色 (Primary)</strong> - 用于主要操作按钮、链接、选中状态</p>
+                        <p><strong style="color: var(--text-primary);">功能色</strong> - 用于状态指示：成功(绿)、警告(琥珀)、错误(红)、信息(蓝)</p>
+                        <p><strong style="color: var(--text-primary);">中性色</strong> - 用于背景、边框、分隔线等界面元素</p>
+                        <p><strong style="color: var(--text-primary);">文字色</strong> - 用于文本：主要文字(深色)、次要文字(中灰)、禁用(浅灰)</p>
+                        <div style="margin-top: 12px; padding: 16px; background: var(--primary-light); border-radius: var(--radius-md);">
+                            <strong style="color: var(--primary);">无障碍标准：</strong>
+                            <ul style="margin-top: 8px; margin-left: 20px;">
+                                <li>正文文字对比度 ≥ 4.5:1 (WCAG AA)</li>
+                                <li>大文字对比度 ≥ 3:1</li>
+                                <li>禁用状态仍可辨识</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 页面切换
+        function showPage(pageId, navItem) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // 显示目标页面
+            document.getElementById(pageId).classList.add('active');
+            
+            // 更新导航状态
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            navItem.classList.add('active');
+        }
+
+        // 选项卡切换
+        function switchTab(index) {
+            const tabs = document.querySelectorAll('.tab-item');
+            const panels = document.querySelectorAll('.tab-panel');
+            
+            tabs.forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+            });
+            
+            panels.forEach((panel, i) => {
+                panel.classList.toggle('active', i === index);
+            });
+        }
+    </script>
+</body>
+</html>

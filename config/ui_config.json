@@ -1,0 +1,49 @@
+{
+  "scaling": {
+    "rules": [
+      {
+        "min_width": 3200,
+        "min_height": 1800,
+        "scale": 2.0,
+        "name": "3K+",
+        "description": "3K及以上分辨率 - 200%缩放"
+      },
+      {
+        "min_width": 2560,
+        "min_height": 1440,
+        "scale": 1.5,
+        "name": "2K",
+        "description": "2K分辨率 - 150%缩放"
+      },
+      {
+        "min_width": 0,
+        "min_height": 0,
+        "scale": 1.0,
+        "name": "1K",
+        "description": "1K及以下分辨率 - 100%缩放"
+      }
+    ],
+    "default_scale": 1.0,
+    "min_scale": 0.5,
+    "max_scale": 3.0,
+    "auto_detect": true
+  },
+  "database": {
+    "driver_priority": ["iris", "pyodbc"],
+    "connection_timeout": 30,
+    "retry_attempts": 3,
+    "retry_delay": 1.0
+  },
+  "ui": {
+    "theme": "default",
+    "animations_enabled": true,
+    "font_family": "Microsoft YaHei",
+    "base_font_size": 10
+  },
+  "logging": {
+    "level": "INFO",
+    "max_file_size_mb": 10,
+    "backup_count": 10,
+    "console_output": true
+  }
+}

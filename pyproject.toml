@@ -1,0 +1,47 @@
+# ===========================================
+# 测试配置 (Test Configuration)
+# ===========================================
+#
+# 注意: 如果 pytest 安装失败（由于 pip 编码问题），
+#       可以使用以下替代方案：
+#
+#   1. 使用 unittest:
+#      python -m unittest discover tests/unit -v
+#
+#   2. 查看测试结果:
+#      tests/unit/ 目录下的测试文件
+#
+# ===========================================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=src --cov-report=html --cov-report=term --cov-report=lcov"
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "tests/*",
+    "*/__pycache__/*",
+    "*/__init__.py",
+    "src/main.py",
+    "src/presentation/windows/*_backup.py",
+]
+parallel = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+]
+fail_under = 80
+show_missing = true
+
+[tool.coverage.html]
+html_directory = "coverage_html"
