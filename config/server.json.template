@@ -1,0 +1,157 @@
+{
+  "server": {
+    "name": "QueryTool Server",
+    "version": "1.0.0",
+    "description": "InterSystems Query Tool High-Performance Server",
+    "host": "0.0.0.0",
+    "http_port": 443,
+    "ws_port": 8080,
+    "max_connections": 5000,
+    "request_timeout": 30,
+    "keep_alive_timeout": 300,
+    "enable_http2": true,
+    "enable_websocket": true,
+    "enable_compression": true,
+    "max_concurrent_streams": 100,
+    "initial_window_size": 65535,
+    "max_frame_size": 16384
+  },
+  "workers": {
+    "num_workers": 4,
+    "max_tasks_per_worker": 1000,
+    "worker_timeout": 300,
+    "enable_auto_restart": true,
+    "health_check_interval": 10
+  },
+  "ssl": {
+    "enabled": false,
+    "cert_file": "config/server.crt",
+    "key_file": "config/server.key",
+    "ca_file": null,
+    "verify_mode": "none",
+    "protocols": ["TLSv1.2", "TLSv1.3"]
+  },
+  "auth": {
+    "jwt_secret": "change-this-secret-key-in-production",
+    "token_expire_hours": 24,
+    "refresh_token_expire_days": 7,
+    "max_login_attempts": 5,
+    "lockout_duration_minutes": 30,
+    "enable_mfa": false,
+    "allowed_origins": ["*"]
+  },
+  "rate_limit": {
+    "enabled": true,
+    "strategy": "sliding_window",
+    "requests_per_minute": 100,
+    "burst_size": 20,
+    "whitelist": ["127.0.0.1", "::1"],
+    "blacklist": []
+  },
+  "websocket": {
+    "enabled": true,
+    "max_connections": 1000,
+    "heartbeat_interval": 30,
+    "connection_timeout": 300,
+    "max_message_size": 10485760,
+    "enable_compression": true
+  },
+  "file_transfer": {
+    "enabled": true,
+    "base_path": "uploads",
+    "temp_path": "temp",
+    "max_file_size": 10737418240,
+    "max_storage_size": 107374182400,
+    "chunk_size": 65536,
+    "max_concurrent_transfers": 10,
+    "max_transfer_queue_size": 100,
+    "checksum_algorithm": "sha256",
+    "enable_virus_scan": false,
+    "virus_scan_command": null,
+    "allowed_extensions": ["*"],
+    "blocked_extensions": [".exe", "*.dll", "*.bat", "*.cmd"],
+    "auto_cleanup_temp": true,
+    "temp_file_max_age_hours": 24
+  },
+  "database": {
+    "connection_pool_size": 20,
+    "connection_max_overflow": 10,
+    "connection_timeout": 30,
+    "connection_recycle": 3600,
+    "query_timeout": 60,
+    "enable_query_cache": true,
+    "cache_ttl": 300
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/server.log",
+    "max_file_size": 10485760,
+    "backup_count": 5,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "date_format": "%Y-%m-%d %H:%M:%S",
+    "enable_console": true,
+    "enable_file": true,
+    "rotation_when": "midnight",
+    "rotation_interval": 1,
+    "compress_backups": true
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics_endpoint": "/metrics",
+    "health_check_endpoint": "/health",
+    "stats_endpoint": "/stats",
+    "enable_prometheus": false,
+    "prometheus_port": 9090,
+    "report_interval": 60,
+    "alert_thresholds": {
+      "cpu_percent": 80,
+      "memory_percent": 80,
+      "disk_percent": 90,
+      "response_time_ms": 1000
+    }
+  },
+  "windows": {
+    "enable_tray_icon": true,
+    "tray_icon_tooltip": "QueryTool Server",
+    "enable_auto_start": false,
+    "service_name": "QueryToolServer",
+    "service_display_name": "QueryTool Server Service",
+    "service_description": "High-performance InterSystems Query Tool Server",
+    "enable_service_recovery": true,
+    "service_recovery_restart_count": 3,
+    "service_recovery_reset_days": 1
+  },
+  "security": {
+    "enable_cors": true,
+    "cors_origins": ["*"],
+    "cors_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "cors_headers": ["*"],
+    "enable_csrf_protection": true,
+    "csrf_token_ttl": 3600,
+    "enable_request_signing": false,
+    "require_https": false,
+    "hsts_max_age": 31536000,
+    "content_security_policy": "default-src 'self'",
+    "enable_security_headers": true
+  },
+  "performance": {
+    "enable_connection_pooling": true,
+    "enable_keep_alive": true,
+    "keep_alive_timeout": 300,
+    "enable_response_compression": true,
+    "compression_level": 6,
+    "min_compress_size": 1024,
+    "enable_static_file_caching": true,
+    "static_file_cache_ttl": 3600,
+    "max_request_body_size": 104857600
+  },
+  "development": {
+    "debug_mode": false,
+    "reload_on_change": false,
+    "enable_profiler": false,
+    "profiler_endpoint": "/profiler",
+    "enable_auto_reload": false,
+    "reload_interval": 1,
+    "ignored_reload_patterns": ["*.pyc", "__pycache__", "*.log"]
+  }
+}
