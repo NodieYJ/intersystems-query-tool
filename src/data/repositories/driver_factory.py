@@ -155,20 +155,16 @@ class DatabaseDriverFactory:
                 if self._try_load_driver(preferred):
                     return preferred
             # 如果指定的驱动失败，继续按配置优先级尝试其他
-        
-        # 按配置优先级尝试
+
+        # 按配置优先级尝试（使用缓存状态）
         for driver_type in priority_list:
-            if self._try_load_pyodbc():
-                return DatabaseDriverType.PYODBC
-            elif self._try_load_iris():
-                return DatabaseDriverType.IRIS
-        else:
-            # 自动检测：优先 IRIS，其次 pyodbc
-            if self._try_load_iris():
-                return DatabaseDriverType.IRIS
-            elif self._try_load_pyodbc():
-                return DatabaseDriverType.PYODBC
-        
+            # 先检查缓存状态
+            if self._driver_status.get(driver_type, False):
+                return driver_type
+            # 尝试加载
+            if self._try_load_driver(driver_type):
+                return driver_type
+
         logger.error("没有可用的数据库驱动")
         return DatabaseDriverType.UNKNOWN
     

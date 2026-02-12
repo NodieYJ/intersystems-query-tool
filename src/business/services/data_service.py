@@ -161,9 +161,87 @@ class InputValidator:
     return True
 
   @staticmethod
+  def validate_query(
+    query: str,
+    params: Optional[tuple] = None,
+    require_params: bool = True
+  ) -> ValidationResult:
+    """
+    验证查询安全性（增强版）
+
+    强制要求使用参数化查询，防止 SQL 注入。
+
+    Args:
+        query: SQL 查询语句
+        params: 查询参数
+        require_params: 是否强制要求参数化查询
+
+    Returns:
+        ValidationResult: 验证结果
+    """
+    if not query:
+      return ValidationResult(
+        is_valid=False,
+        message="Query cannot be empty",
+        sanitized_value=""
+      )
+
+    # 1. 强制参数化检查
+    if require_params and params is None:
+      return ValidationResult(
+        is_valid=False,
+        message="Dynamic queries must use parameterized queries",
+        sanitized_value=""
+      )
+
+    query_upper = query.upper().strip()
+
+    # 2. 检查危险的关键字
+    dangerous_keywords = [
+      ("DROP", "DROP"),
+      ("DELETE FROM", "DELETE"),
+      ("TRUNCATE", "TRUNCATE"),
+      ("ALTER", "ALTER"),
+      ("CREATE", "CREATE"),
+      ("INSERT INTO", "INSERT"),
+      ("UPDATE", "UPDATE"),
+      ("EXEC", "EXEC"),
+      ("EXECUTE", "EXECUTE"),
+      ("xp_", "xp_"),
+      ("sp_", "sp_"),
+    ]
+
+    for keyword, description in dangerous_keywords:
+      if keyword in query_upper:
+        return ValidationResult(
+          is_valid=False,
+          message=f"Query contains dangerous keyword: {description}",
+          sanitized_value=""
+        )
+
+    # 3. 检查注释注入
+    if "--" in query or "/*" in query:
+      logger.warning("Query contains SQL comments")
+
+    # 4. 验证参数安全性
+    if params is not None:
+      if not InputValidator.validate_sql_query_params(params):
+        return ValidationResult(
+          is_valid=False,
+          message="Parameters contain dangerous content",
+          sanitized_value=""
+        )
+
+    return ValidationResult(
+      is_valid=True,
+      message="Query passed safety check",
+      sanitized_value=query
+    )
+
+  @staticmethod
   def validate_query_not_dangerous(query: str) -> ValidationResult:
     """
-    验证查询是否包含危险操作
+    验证查询是否包含危险操作（兼容旧接口）
 
     Args:
         query: SQL 查询语句
@@ -171,6 +249,7 @@ class InputValidator:
     Returns:
         ValidationResult: 验证结果
     """
+    # 旧方法只做向后兼容，不强制参数化
     if not query:
       return ValidationResult(
         is_valid=False,
@@ -205,7 +284,6 @@ class InputValidator:
 
     # 检查注释注入
     if "--" in query or "/*" in query:
-      # 允许注释，但警告
       logger.warning("Query contains SQL comments")
 
     return ValidationResult(
@@ -328,39 +406,36 @@ class DataService:
 
     Args:
         query: SQL查询语句
-        params: 查询参数
+        params: 查询参数（强制要求，用于防止SQL注入）
 
     Returns:
         Optional[List[Dict[str, Any]]]: 查询结果
 
     Raises:
-        ValueError: 查询包含危险操作
+        ValueError: 查询包含危险操作或未使用参数化查询
         TypeError: 参数类型错误
     """
     try:
       logger.debug("开始执行数据获取操作")
 
-      # 验证查询安全性
-      query_validation = InputValidator.validate_query_not_dangerous(query)
+      # 验证查询安全性（强制参数化）
+      query_validation = InputValidator.validate_query(query, tuple(params) if params else None)
       if not query_validation.is_valid:
         logger.error(f"查询验证失败: {query_validation.message}")
         raise ValueError(f"查询验证失败: {query_validation.message}")
 
-      # 验证参数
+      # 验证参数类型
       if params is not None:
         if not isinstance(params, (list, tuple)):
           raise TypeError("参数必须为列表或元组")
 
-        if not InputValidator.validate_sql_query_params(tuple(params)):
-          raise ValueError("参数包含危险内容")
-
       logger.info(f"执行查询: {query}")
       if params:
-        logger.debug(f"查询参数: {params}")
+        logger.debug(f"查询参数: [已脱敏，共{len(params)}个参数]")
 
       logger.debug("调用数据库仓库执行查询")
       result = self.db_repository.execute_query(query, params)
-      logger.debug(f"数据获取操作完成，返回结果: {result}")
+      logger.debug(f"数据获取操作完成，返回{len(result) if result else 0}条记录")
       return result
 
     except (ValueError, TypeError):
@@ -376,35 +451,32 @@ class DataService:
 
     Args:
         query: SQL语句
-        params: 查询参数
+        params: 查询参数（强制要求，用于防止SQL注入）
 
     Returns:
         bool: 执行是否成功
 
     Raises:
-        ValueError: 查询包含危险操作
+        ValueError: 查询包含危险操作或未使用参数化查询
         TypeError: 参数类型错误
     """
     try:
       logger.debug("开始执行数据保存操作")
 
-      # 验证查询安全性
-      query_validation = InputValidator.validate_query_not_dangerous(query)
+      # 验证查询安全性（强制参数化）
+      query_validation = InputValidator.validate_query(query, tuple(params) if params else None)
       if not query_validation.is_valid:
         logger.error(f"保存操作验证失败: {query_validation.message}")
         raise ValueError(f"保存操作验证失败: {query_validation.message}")
 
-      # 验证参数
+      # 验证参数类型
       if params is not None:
         if not isinstance(params, (list, tuple)):
           raise TypeError("参数必须为列表或元组")
 
-        if not InputValidator.validate_sql_query_params(tuple(params)):
-          raise ValueError("参数包含危险内容")
-
       logger.info(f"执行保存操作: {query}")
       if params:
-        logger.debug(f"保存参数: {params}")
+        logger.debug(f"保存参数: [已脱敏，共{len(params)}个参数]")
 
       logger.debug("调用数据库仓库执行非查询操作")
       result = self.db_repository.execute_non_query(query, params)
@@ -430,7 +502,8 @@ class DataService:
       logger.info("执行数据库连接测试")
       # 执行简单查询测试连接
       logger.debug("执行测试查询: SELECT 1")
-      result = self.db_repository.execute_query("SELECT 1")
+      # 测试查询使用特殊处理，不需要参数化
+      result = self.db_repository.execute_query("SELECT 1", timeout=5)
       logger.debug(f"测试查询结果: {result}")
       if result and len(result) > 0:
         logger.info("数据库连接测试成功")
@@ -473,6 +546,7 @@ class DataService:
         WHERE table_schema = %s
         ORDER BY table_name
       """
+      # 使用参数化查询
       result = self.db_repository.execute_query(query, [schema_param])
       return [row.get("table_name", "") for row in result] if result else []
 
