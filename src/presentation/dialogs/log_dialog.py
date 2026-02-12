@@ -12,14 +12,26 @@ import os
 import re
 import logging
 from datetime import datetime
-from functools import partial  # 添加 partial 导入
+from functools import partial
+from typing import Dict, List, Optional, Tuple, Any
 
 # ==========================================================================
 # 常量定义
 # ==========================================================================
 
 # 默认日志目录
-DEFAULT_LOG_DIR = "src/log"
+DEFAULT_LOG_DIR: str = "src/log"
+
+# 支持的日志文件扩展名
+LOG_FILE_EXTENSIONS: Tuple[str, ...] = ('.log', '.txt', '.LOG')
+
+# 模块级配置标志
+CONFIG_MANAGER_AVAILABLE: bool = True
+
+try:
+    from src.infrastructure.config.config_manager import get_config_manager
+except ImportError:
+    CONFIG_MANAGER_AVAILABLE = False
 
 from PySide2.QtWidgets import (QApplication, QDialog, QWidget, QVBoxLayout, 
                                QHBoxLayout, QListWidget, QListWidgetItem, 
@@ -398,13 +410,14 @@ class LogDialog(QDialog):
             self.log_dir = DEFAULT_LOG_DIR
 
             # 尝试从配置管理器获取日志目录
-            try:
-                from src.infrastructure.config.config_manager import get_config_manager
-                config_dir = get_config_manager().get("paths.log_dir", "")
-                if config_dir:
-                    self.log_dir = config_dir
-            except ImportError:
-                pass  # 使用默认值
+            if CONFIG_MANAGER_AVAILABLE:
+                try:
+                    from src.infrastructure.config.config_manager import get_config_manager
+                    config_dir = get_config_manager().get("paths.log_dir", "")
+                    if config_dir:
+                        self.log_dir = config_dir
+                except Exception:
+                    pass  # 使用默认值
             
             # 加载文件列表
             self.load_file_list()
@@ -415,7 +428,27 @@ class LogDialog(QDialog):
             logger.error(error_msg)
             from PySide2.QtWidgets import QMessageBox
             QMessageBox.critical(self, "错误", error_msg)
-    
+
+    # ==========================================================================
+    # 公共方法
+    # ==========================================================================
+
+    def _handle_error(self, context: str, error: Exception, show_dialog: bool = False) -> None:
+        """
+        统一处理错误的公共方法
+
+        Args:
+            context: 错误上下文描述
+            error: 异常对象
+            show_dialog: 是否显示错误对话框
+        """
+        error_msg = f"{context}: {str(error)}"
+        self.show_message(error_msg)
+        logger.error(error_msg, exc_info=True)
+
+        if show_dialog:
+            QMessageBox.critical(self, "错误", error_msg)
+
     def load_file_list(self):
         """加载src/log目录下的所有日志文件到列表（倒序排列）"""
         # 清空文件列表
@@ -430,10 +463,8 @@ class LogDialog(QDialog):
         try:
             log_files = []
             for filename in os.listdir(self.log_dir):
-                # 只添加日志文件，可以根据需要修改扩展名
-                if (filename.endswith('.log') or 
-                    filename.endswith('.txt') or 
-                    filename.endswith('.LOG')):
+                # 只添加日志文件，使用常量
+                if filename.endswith(LOG_FILE_EXTENSIONS):
                     log_files.append(filename)
             
             # 按文件名倒序排列（最新的日志文件排在前面）
@@ -455,9 +486,7 @@ class LogDialog(QDialog):
                 self.show_message("没有找到日志文件")
                 
         except Exception as e:
-            error_msg = f"读取文件列表时出错: {str(e)}"
-            self.show_message(error_msg)
-            logger.error(error_msg, exc_info=True)
+            self._handle_error("读取文件列表时出错", e)
     
     def on_file_selected(self, item):
         """当文件被选中时，加载并显示文件内容"""

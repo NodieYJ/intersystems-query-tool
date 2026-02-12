@@ -299,10 +299,13 @@ class QueryHistoryDialog(QDialog):
         current_item = self.history_list.currentItem()
         
         if not current_item:
+            logger.debug("用户点击查看详情，但未选择任何记录")
             return
         
         entry = current_item.data(Qt.UserRole)
         sql = entry.get('sql', '')
+        
+        logger.debug(f"用户查看SQL详情: {sql[:100]}...")
         
         # 创建详细信息对话框
         from PySide2.QtWidgets import QTextEdit
