@@ -16,6 +16,8 @@
 
 import logging
 import threading
+import json
+from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Type, TypeVar
 
 from src.infrastructure.config.config_manager import (
@@ -33,13 +35,143 @@ from src.infrastructure.utils.scaling_manager import ScalingManager, get_scaling
 from src.business.services.data_analysis_service import DataAnalysisService, get_data_analysis_service
 from src.business.services.data_service import DataService, get_data_service
 from src.business.services.query_history_manager import QueryHistoryManager, get_query_history_manager
-from src.data.repositories.database_repository import DatabaseRepository, getDbRepository
+from src.data.repositories.database_repository import DatabaseRepository, get_db_repository
 from src.data.repositories.driver_factory import DatabaseDriverFactory, get_driver_factory
 
 logger = logging.getLogger(__name__)
 
 # 类型变量用于泛型返回
 T = TypeVar('T')
+
+
+@dataclass
+class ServiceConfig:
+  """
+  服务配置类
+
+  Attributes:
+      classPath: 服务类的完整模块路径
+      kwargs: 初始化参数
+      enabled: 是否启用
+      description: 服务描述
+  """
+  class_path: str = ""
+  kwargs: Dict[str, Any] = field(default_factory=dict)
+  enabled: bool = True
+  description: str = ""
+
+
+class ServiceRegistry:
+  """
+  服务注册表
+
+  负责管理所有可用的服务配置
+  支持配置驱动的服务注册
+  """
+
+  _services: Dict[str, ServiceConfig] = {}
+  _class_cache: Dict[str, Type] = {}
+  _lock = threading.Lock()
+
+  @classmethod
+  def register(cls, name: str, config: ServiceConfig) -> None:
+    """
+    注册服务
+
+    Args:
+        name: 服务名称
+        config: 服务配置
+    """
+    with cls._lock:
+      cls._services[name] = config
+      logger.info(f"Registered service: {name}")
+
+  @classmethod
+  def get_config(cls, name: str) -> Optional[ServiceConfig]:
+    """
+    获取服务配置
+
+    Args:
+        name: 服务名称
+
+    Returns:
+        ServiceConfig 或 None
+    """
+    return cls._services.get(name)
+
+  @classmethod
+  def get_all_configs(cls) -> Dict[str, ServiceConfig]:
+    """
+    获取所有服务配置
+
+    Returns:
+        Dict[str, ServiceConfig]
+    """
+    with cls._lock:
+      return cls._services.copy()
+
+  @classmethod
+  def load_from_config(cls, config_dict: Dict[str, Dict]) -> None:
+    """
+    从配置字典加载服务注册
+
+    Args:
+        config_dict: 服务配置字典
+    """
+    with cls._lock:
+      for name, config_data in config_dict.items():
+        if not isinstance(config_data, dict):
+          logger.warning(f"Invalid service config for {name}: expected dict")
+          continue
+
+        config = ServiceConfig(
+          class_path=config_data.get("classPath", ""),
+          kwargs=config_data.get("kwargs", {}),
+          enabled=config_data.get("enabled", True),
+          description=config_data.get("description", "")
+        )
+        cls.register(name, config)
+
+  @classmethod
+  def load_from_json_file(cls, config_path: str) -> bool:
+    """
+    从 JSON 配置文件加载服务注册
+
+    Args:
+        config_path: 配置文件路径
+
+    Returns:
+        bool: 加载是否成功
+    """
+    try:
+      with open(config_path, 'r', encoding='utf-8') as f:
+        config_data = json.load(f)
+
+      services = config_data.get("services", {})
+      cls.load_from_config(services)
+
+      logger.info(f"Loaded {len(services)} services from {config_path}")
+      return True
+
+    except FileNotFoundError:
+      logger.warning(f"Service config file not found: {config_path}")
+      return False
+    except json.JSONDecodeError as e:
+      logger.error(f"Invalid JSON in service config: {e}")
+      return False
+    except Exception as e:
+      logger.error(f"Failed to load service config: {e}")
+      return False
+
+  @classmethod
+  def clear(cls) -> None:
+    """
+    清空所有注册
+    """
+    with cls._lock:
+      cls._services.clear()
+      cls._class_cache.clear()
+      logger.info("ServiceRegistry cleared")
 
 
 class ServiceFactory:
@@ -93,7 +225,7 @@ class ServiceFactory:
                 
                 # 第四层：数据层服务
                 cls._get_service_impl(DatabaseDriverFactory, get_driver_factory)
-                cls._get_service_impl(DatabaseRepository, getDbRepository)
+                cls._get_service_impl(DatabaseRepository, get_db_repository)
                 
                 # 第五层：业务层服务
                 cls._get_service_impl(QueryHistoryManager, get_query_history_manager)
@@ -177,7 +309,7 @@ class ServiceFactory:
     @classmethod
     def get_db_repository(cls) -> DatabaseRepository:
         """获取数据库仓库实例"""
-        return cls._get_service_impl(DatabaseRepository, getDbRepository)
+        return cls._get_service_impl(DatabaseRepository, get_db_repository)
 
     @classmethod
     def get_query_history_manager(cls) -> QueryHistoryManager:

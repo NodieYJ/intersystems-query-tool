@@ -38,62 +38,74 @@ class ConnectionPool:
   支持连接健康检查、超时清理和自动释放
   """
 
-  def __init__(self, maxConnections: int = 10, timeout: int = 30):
+  # 默认连接超时 (秒)
+  DEFAULT_CONNECTION_TIMEOUT = 30
+  # 默认查询超时 (秒)
+  DEFAULT_QUERY_TIMEOUT = 30
+
+  def __init__(
+    self,
+    max_connections: int = 10,
+    timeout: int = 30,
+    query_timeout: Optional[int] = None
+  ):
     """
     初始化连接池
 
     Args:
-      maxConnections: 最大连接数
+      max_connections: 最大连接数
       timeout: 连接超时时间（秒）
+      query_timeout: 查询超时时间（秒），默认与连接超时相同
     """
-    self.maxConnections = maxConnections
+    self.max_connections = max_connections
     self.timeout = timeout
+    self.query_timeout = query_timeout if query_timeout is not None else timeout
     self.connections = []
     self.lock = threading.RLock()
     self.logger = logging.getLogger(__name__)
 
     # 启动定期清理线程
-    self._cleanupThread = None
-    self._startCleanupThread()
+    self._cleanup_thread = None
+    self._start_cleanup_thread()
 
-  def getConnection(
-    self, connectionParams: Dict[str, Any]
+  def get_connection(
+    self, connection_params: Dict[str, Any]
   ) -> Optional[Tuple[Any, Any]]:
     """
     获取数据库连接
 
     Args:
-      connectionParams: 连接参数
+      connection_params: 连接参数
 
     Returns:
       Optional[Tuple[Any, Any]]: (connection, cursor) 元组
     """
     with self.lock:
       # 尝试从连接池获取可用连接
-      for connInfo in self.connections:
-        conn, cursor, params, lastUsed = connInfo
+      for conn_info in self.connections:
+        conn, cursor, params, last_used = conn_info
         # 检查连接是否匹配参数且未超时
-        if params == connectionParams and self._isConnectionValid(conn):
+        if params == connection_params and self._is_connection_valid(conn):
           # 更新最后使用时间
-          connInfo[3] = datetime.now()
+          conn_info[3] = datetime.now()
           self.logger.info("从连接池获取连接")
           return conn, cursor
 
       # 如果没有可用连接且未达到最大连接数，创建新连接
-      if len(self.connections) < self.maxConnections:
+      if len(self.connections) < self.max_connections:
         self.logger.info("创建新的数据库连接")
-        connCursor = self._createConnection(connectionParams)
-        if connCursor:
-          conn, cursor = connCursor
+        conn_cursor = self._create_connection(connection_params)
+        if conn_cursor:
+          conn, cursor = conn_cursor
           self.connections.append(
-            [conn, cursor, connectionParams, datetime.now()]
+            [conn, cursor, connection_params, datetime.now()]
           )
           return conn, cursor
 
       self.logger.warning("连接池已满，无法获取连接")
       return None
 
-  def releaseConnection(self, connection: Any):
+  def release_connection(self, connection: Any):
     """
     释放连接回连接池（不健康则关闭）
 
@@ -101,11 +113,11 @@ class ConnectionPool:
       connection: 数据库连接
     """
     with self.lock:
-      for i, connInfo in enumerate(self.connections):
-        conn, cursor, _, _ = connInfo
+      for i, conn_info in enumerate(self.connections):
+        conn, cursor, _, _ = conn_info
         if conn == connection:
           # 检查连接健康状态
-          if not self._isConnectionHealthy(conn):
+          if not self._is_connection_healthy(conn):
             # 不健康则关闭并移除
             self.logger.warning(f"关闭不健康连接 #{i}")
             try:
@@ -126,17 +138,17 @@ class ConnectionPool:
             return
 
           # 健康的连接标记为未使用并更新时间
-          connInfo[3] = datetime.now()
+          conn_info[3] = datetime.now()
           self.logger.debug(f"连接 #{i} 已释放回连接池")
           break
 
-  def closeAllConnections(self):
+  def close_all_connections(self):
     """
     关闭所有连接
     """
     with self.lock:
-      for connInfo in self.connections:
-        conn, cursor, _, _ = connInfo
+      for conn_info in self.connections:
+        conn, cursor, _, _ = conn_info
         try:
           if cursor:
             cursor.close()
@@ -147,14 +159,14 @@ class ConnectionPool:
           self.logger.error(f"关闭连接失败: {str(e)}")
       self.connections.clear()
 
-  def _createConnection(
-    self, connectionParams: Dict[str, Any]
+  def _create_connection(
+    self, connection_params: Dict[str, Any]
   ) -> Optional[Tuple[Any, Any]]:
     """
     创建数据库连接
 
     Args:
-      connectionParams: 连接参数
+      connection_params: 连接参数
 
     Returns:
       Optional[Tuple[Any, Any]]: (connection, cursor) 元组
@@ -162,13 +174,13 @@ class ConnectionPool:
     try:
       # 使用驱动工厂创建连接
       factory = get_driver_factory()
-      return factory.create_connection(connectionParams)
+      return factory.create_connection(connection_params)
 
     except Exception as e:
       self.logger.error(f"创建连接失败: {str(e)}")
       return None
 
-  def _isConnectionValid(self, connection: Any) -> bool:
+  def _is_connection_valid(self, connection: Any) -> bool:
     """
     检查连接是否有效
 
@@ -196,21 +208,21 @@ class ConnectionPool:
       self.logger.warning(f"连接无效: {str(e)}")
       return False
 
-  def _startCleanupThread(self) -> None:
+  def _start_cleanup_thread(self) -> None:
     """启动定期清理线程"""
-    def cleanupWorker():
+    def cleanup_worker():
       while True:
         time.sleep(60)  # 每分钟清理一次
         try:
-          self.cleanupExpiredConnections()
+          self.cleanup_expired_connections()
         except Exception as e:
           self.logger.error(f"清理线程出错: {e}")
 
-    self._cleanupThread = threading.Thread(target=cleanupWorker, daemon=True)
-    self._cleanupThread.start()
+    self._cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
+    self._cleanup_thread.start()
     self.logger.debug("连接池清理线程已启动")
 
-  def _isConnectionHealthy(self, connection: Any) -> bool:
+  def _is_connection_healthy(self, connection: Any) -> bool:
     """
     检查连接是否健康（支持is_connected方法）
 
@@ -226,12 +238,12 @@ class ConnectionPool:
         return connection.is_connected()
 
       # 否则使用现有的连接有效性检查
-      return self._isConnectionValid(connection)
+      return self._is_connection_valid(connection)
     except Exception as e:
       self.logger.warning(f"连接健康检查失败: {e}")
       return False
 
-  def _getExpiredConnections(self) -> List[int]:
+  def _get_expired_connections(self) -> List[int]:
     """
     获取已过期的连接索引列表
 
@@ -239,33 +251,33 @@ class ConnectionPool:
       List[int]: 过期连接索引列表
     """
     expired = []
-    currentTime = datetime.now()
+    current_time = datetime.now()
 
-    for i, connInfo in enumerate(self.connections):
-      _, _, _, lastUsed = connInfo
+    for i, conn_info in enumerate(self.connections):
+      _, _, _, last_used = conn_info
       # 未使用且超时的连接
-      if (currentTime - lastUsed).total_seconds() > self.timeout:
+      if (current_time - last_used).total_seconds() > self.timeout:
         expired.append(i)
 
     return expired
 
-  def cleanupExpiredConnections(self) -> int:
+  def cleanup_expired_connections(self) -> int:
     """
     清理所有过期的连接
 
     Returns:
       int: 清理的连接数
     """
-    cleanedCount = 0
+    cleaned_count = 0
 
     with self.lock:
-      expiredIndices = self._getExpiredConnections()
+      expired_indices = self._get_expired_connections()
 
       # 逆序删除，避免索引变化
-      for i in sorted(expiredIndices, reverse=True):
+      for i in sorted(expired_indices, reverse=True):
         try:
-          connInfo = self.connections[i]
-          conn, cursor, _, _ = connInfo
+          conn_info = self.connections[i]
+          conn, cursor, _, _ = conn_info
 
           # 关闭连接
           if cursor:
@@ -280,15 +292,15 @@ class ConnectionPool:
               pass
 
           del self.connections[i]
-          cleanedCount += 1
+          cleaned_count += 1
           self.logger.debug(f"清理过期连接 #{i}")
         except Exception as e:
           self.logger.error(f"清理连接失败 #{i}: {e}")
 
-    if cleanedCount > 0:
-      self.logger.info(f"清理了 {cleanedCount} 个过期连接")
+    if cleaned_count > 0:
+      self.logger.info(f"清理了 {cleaned_count} 个过期连接")
 
-    return cleanedCount
+    return cleaned_count
 
 
 class DatabaseRepository(IQueryRepository):
@@ -303,11 +315,11 @@ class DatabaseRepository(IQueryRepository):
     """
     初始化数据库仓库
     """
-    self.configManager = get_config_manager()
-    self.connectionPool = ConnectionPool()
+    self.config_manager = get_config_manager()
+    self.connection_pool = ConnectionPool()
     self.logger = logging.getLogger(__name__)
 
-  def getConnectionParams(self) -> Dict[str, Any]:
+  def get_connection_params(self) -> Dict[str, Any]:
     """
     获取连接参数
 
@@ -317,23 +329,23 @@ class DatabaseRepository(IQueryRepository):
     try:
       self.logger.debug("开始获取数据库连接参数")
       # 获取配置
-      server = self.configManager.get("database.server", "localhost")
-      port = self.configManager.get("database.port", DatabaseDefaults.PORT_DEFAULT)
-      namespace = self.configManager.get("database.namespace", "USER")
-      username = self.configManager.get("database.username", "")
-      password = self.configManager.get("database.password", "")
-      dbType = self.configManager.get("database.db_type", DatabaseTypes.IRIS)
+      server = self.config_manager.get("database.server", "localhost")
+      port = self.config_manager.get("database.port", DatabaseDefaults.PORT_DEFAULT)
+      namespace = self.config_manager.get("database.namespace", "USER")
+      username = self.config_manager.get("database.username", "")
+      password = self.config_manager.get("database.password", "")
+      db_type = self.config_manager.get("database.db_type", DatabaseTypes.IRIS)
 
-      connectionParams = {
+      connection_params = {
         "server": server,
         "port": port,
         "namespace": namespace,
         "username": username,
         "password": "******",  # 日志中隐藏密码
-        "db_type": dbType,
+        "db_type": db_type,
       }
 
-      self.logger.debug(f"获取连接参数完成: {connectionParams}")
+      self.logger.debug(f"获取连接参数完成: {connection_params}")
 
       return {
         "server": server,
@@ -341,7 +353,7 @@ class DatabaseRepository(IQueryRepository):
         "namespace": namespace,
         "username": username,
         "password": password,
-        "db_type": dbType,
+        "db_type": db_type,
       }
     except Exception as e:
       self.logger.error(f"获取连接参数失败: {str(e)}")
@@ -356,7 +368,10 @@ class DatabaseRepository(IQueryRepository):
       }
 
   def executeQuery(
-    self, query: str, params: Optional[List[Any]] = None
+    self,
+    query: str,
+    params: Optional[List[Any]] = None,
+    timeout: Optional[float] = None
   ) -> List[Dict[str, Any]]:
     """
     执行SQL查询
@@ -366,13 +381,18 @@ class DatabaseRepository(IQueryRepository):
     Args:
       query: SQL查询语句
       params: 查询参数
+      timeout: 查询超时时间（秒），默认使用连接池配置
 
     Returns:
       List[Dict[str, Any]]: 查询结果列表
 
     Raises:
       QueryExecutionException: 查询执行失败
+      QueryTimeoutException: 查询超时
     """
+    # 使用默认值或传入的超时时间
+    query_timeout = timeout if timeout is not None else self.connection_pool.query_timeout
+
     try:
       self.logger.debug("开始执行SQL查询操作")
 
@@ -388,6 +408,7 @@ class DatabaseRepository(IQueryRepository):
         )
 
       self.logger.debug(f"使用驱动: {driverType.value}")
+      self.logger.debug(f"查询超时设置: {query_timeout}秒")
 
       self.logger.debug("获取数据库连接参数")
       connectionParams = self.getConnectionParams()
@@ -503,7 +524,7 @@ class DatabaseRepository(IQueryRepository):
       finally:
         # 释放连接回连接池
         self.logger.debug("释放连接回连接池")
-        self.connectionPool.releaseConnection(conn)
+        self.connection_pool.release_connection(conn)
         self.logger.debug("连接释放完成")
 
     except QueryExecutionException:
@@ -642,7 +663,7 @@ class DatabaseRepository(IQueryRepository):
       finally:
         # 释放连接回连接池
         self.logger.debug("释放连接回连接池")
-        self.connectionPool.releaseConnection(conn)
+        self.connection_pool.release_connection(conn)
         self.logger.debug("连接释放完成")
 
     except (QueryExecutionException, ConnectionException):
@@ -694,18 +715,18 @@ class DatabaseRepository(IQueryRepository):
     """
     关闭所有连接
     """
-    self.connectionPool.closeAllConnections()
+    self.connection_pool.close_all_connections()
 
 
 # 创建全局数据库仓库实例
-dbRepository = DatabaseRepository()
+db_repository = DatabaseRepository()
 
 
-def getDbRepository() -> DatabaseRepository:
+def get_db_repository() -> DatabaseRepository:
   """
   获取数据库仓库实例
 
   Returns:
     DatabaseRepository: 数据库仓库实例
   """
-  return dbRepository
+  return db_repository

@@ -21,7 +21,7 @@ class TestConnectionPoolHealth(unittest.TestCase):
     def setUp(self):
         """设置测试环境"""
         from src.data.repositories.database_repository import ConnectionPool
-        self.pool = ConnectionPool(maxConnections=3, timeout=2)  # 2秒超时便于测试
+        self.pool = ConnectionPool(max_connections=3, timeout=2)  # 2秒超时便于测试
     
     def test_connection_health_check(self):
         """测试连接健康检查"""
@@ -30,12 +30,12 @@ class TestConnectionPoolHealth(unittest.TestCase):
         mock_conn.is_connected.return_value = True
         
         # 健康的连接应该返回True
-        is_healthy = self.pool._isConnectionHealthy(mock_conn)
+        is_healthy = self.pool._is_connection_healthy(mock_conn)
         self.assertTrue(is_healthy)
 
         # 断开的连接应该返回False
         mock_conn.is_connected.return_value = False
-        is_healthy = self.pool._isConnectionHealthy(mock_conn)
+        is_healthy = self.pool._is_connection_healthy(mock_conn)
         self.assertFalse(is_healthy)
     
     def test_connection_expiry(self):
@@ -47,7 +47,7 @@ class TestConnectionPoolHealth(unittest.TestCase):
         self.pool.connections.append([mock_conn, None, {}, datetime.now() - timedelta(seconds=10)])
         
         # 检查过期（超时设置为2秒）
-        expired = self.pool._getExpiredConnections()
+        expired = self.pool._get_expired_connections()
         self.assertEqual(len(expired), 1)
     
     def test_auto_cleanup_expired_connections(self):
@@ -59,7 +59,7 @@ class TestConnectionPoolHealth(unittest.TestCase):
         self.pool.connections.append([mock_conn, None, {}, datetime.now() - timedelta(seconds=10)])
 
         # 执行清理
-        cleaned_count = self.pool.cleanupExpiredConnections()
+        cleaned_count = self.pool.cleanup_expired_connections()
 
         # 验证连接已关闭并移除
         mock_conn.close.assert_called_once()
@@ -76,7 +76,7 @@ class TestConnectionPoolHealth(unittest.TestCase):
         self.pool.connections.append([mock_conn, None, {}, datetime.now()])
         
         # 释放连接
-        self.pool.releaseConnection(mock_conn)
+        self.pool.release_connection(mock_conn)
         
         # 不健康连接应该被关闭
         mock_conn.close.assert_called_once()
@@ -91,7 +91,7 @@ class TestConnectionPoolHealth(unittest.TestCase):
         self.pool.connections.append([mock_conn, None, {}, datetime.now()])
 
         # 执行清理
-        cleaned_count = self.pool.cleanupExpiredConnections()
+        cleaned_count = self.pool.cleanup_expired_connections()
         
         # 不应该清理
         mock_conn.close.assert_not_called()

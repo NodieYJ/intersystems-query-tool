@@ -2,6 +2,19 @@
 
 功能完整的桌面窗体应用程序，支持窗口控制、尺寸调整、滚动条功能和界面交互。
 
+## 最新更新 (2024-02)
+
+### 🔒 安全增强
+- **密码强度检查**: 自动验证密码复杂度
+- **恒定时间比较**: 防止时序攻击
+- **SQL 注入防护**: 自动检测危险查询
+- **输入验证**: Schema 和参数安全验证
+
+### ⚡ 性能优化
+- **连接池超时控制**: 防止资源耗尽
+- **配置驱动服务**: 支持 JSON 配置管理
+- **缓存机制**: 数据服务缓存支持
+
 ## 项目结构
 
 ```
@@ -31,6 +44,8 @@ src/
 - SQL查询功能
 - 日志查看功能
 - 支持Intersystems IRIS和Cache数据库
+- 🔒 **安全功能**: 密码加密、强度检查、SQL注入防护
+- ⚡ **性能优化**: 连接池管理、查询超时控制、服务注册表
 
 ## 安装与配置
 
@@ -94,7 +109,26 @@ python src/main.py
 项目使用pytest进行单元测试和集成测试：
 
 ```bash
+# 运行所有测试
 pytest
+
+# 运行安全功能测试
+pytest tests/unit/test_security_enhanced.py -v
+
+# 运行输入验证测试
+pytest tests/unit/test_input_validation.py -v
+```
+
+### 安全测试
+
+项目包含专门的安全功能测试：
+
+```bash
+# 密码加密和验证测试
+python -m unittest tests.unit.test_security_enhanced
+
+# 输入验证测试
+python -m unittest tests.unit.test_input_validation
 ```
 
 ### 构建与分发
@@ -123,9 +157,20 @@ python setup.py sdist bdist_wheel
    - 检查是否已正确配置相关参数
    - 查看日志文件获取详细错误信息
 
+4. **安全功能问题**
+   - 确保 cryptography 库已正确安装 (`pip install cryptography>=3.4.8`)
+   - 密码强度要求：至少8个字符
+   - 检查 config/services.json 配置是否正确
+
 ### 日志文件
 
 日志文件存储在`log`目录中，可通过应用程序中的"设置" -> "日志"菜单查看。
+
+### 安全日志
+
+安全相关事件会记录以下日志级别：
+- `WARNING`: 密码强度不足、登录失败
+- `ERROR`: 加密失败、SQL注入检测
 
 ## 贡献
 

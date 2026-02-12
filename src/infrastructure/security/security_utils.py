@@ -56,68 +56,233 @@ def check_dependencies() -> Dict[str, bool]:
 
 
 class SecurityUtils:
+  """
+  安全工具类
+
+  提供密码加密、验证、输入验证等安全功能
+  """
+
+  # PBKDF2 算法常量
+  PBKDF2_ITERATIONS = 100000  # 迭代次数，OWASP 推荐值
+  PBKDF2_KEY_LENGTH = 32  # 密钥长度（字节）
+  SALT_LENGTH = 16  # 盐值长度（字节）
+
+  # 密码策略常量
+  MIN_PASSWORD_LENGTH = 8
+  MAX_PASSWORD_LENGTH = 128
+
+  @staticmethod
+  def encrypt_password(password: str, salt: Optional[str] = None) -> str:
     """
-    安全工具类
+    加密密码
+
+    使用PBKDF2算法进行密码加密。此方法需要cryptography库，
+    如果库未安装或加密失败，将抛出异常而不是使用不安全的降级方案。
+
+    Args:
+        password: 原始密码
+        salt: 盐值，如果不提供则生成随机盐值
+
+    Returns:
+        str: 加密后的密码，格式为：salt$hashed_password
+
+    Raises:
+        ImportError: cryptography库未安装
+        RuntimeError: 密码加密过程中发生错误
+        ValueError: 密码不符合策略要求
     """
+    # 密码策略验证
+    if not password:
+      raise ValueError("密码不能为空")
 
-    # PBKDF2 算法常量
-    PBKDF2_ITERATIONS = 100000  # 迭代次数，OWASP 推荐值
-    PBKDF2_KEY_LENGTH = 32  # 密钥长度（字节）
-    SALT_LENGTH = 16  # 盐值长度（字节）
+    if len(password) < SecurityUtils.MIN_PASSWORD_LENGTH:
+      raise ValueError(
+        f"密码长度至少需要 {SecurityUtils.MIN_PASSWORD_LENGTH} 个字符"
+      )
 
-    @staticmethod
-    def encrypt_password(password: str, salt: Optional[str] = None) -> str:
-        """
-        加密密码
+    if len(password) > SecurityUtils.MAX_PASSWORD_LENGTH:
+      raise ValueError(
+        f"密码长度不能超过 {SecurityUtils.MAX_PASSWORD_LENGTH} 个字符"
+      )
 
-        Args:
-            password: 原始密码
-            salt: 盐值，如果不提供则生成
+    if not CRYPTOGRAPHY_AVAILABLE:
+      raise ImportError(
+        "cryptography库未安装，无法安全加密密码。"
+        "请安装: pip install cryptography>=3.4.8"
+      )
 
-        Returns:
-            str: 加密后的密码
-        """
-        try:
-            if not salt:
-                # 生成随机盐值
-                import secrets
-                salt = secrets.token_hex(SecurityUtils.SALT_LENGTH)
-            
-            # 使用PBKDF2算法加密
-            import binascii
-            from cryptography.hazmat.primitives import hashes
-            from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-            from cryptography.hazmat.backends import default_backend
+    try:
+      if not salt:
+        # 生成随机盐值
+        import secrets
+        salt = secrets.token_hex(SecurityUtils.SALT_LENGTH)
 
-            kdf = PBKDF2HMAC(
-                algorithm=hashes.SHA256(),
-                length=SecurityUtils.PBKDF2_KEY_LENGTH,
-                salt=salt.encode(),
-                iterations=SecurityUtils.PBKDF2_ITERATIONS,
-                backend=default_backend()
-            )
-            
-            key = kdf.derive(password.encode())
-            hashed_password = binascii.hexlify(key).decode()
-            
-            # 返回盐值和加密后的密码，格式为：salt$hashed_password
-            return f"{salt}${hashed_password}"
-        except ImportError:
-            # 如果cryptography库不可用，使用简单的哈希方法
-            logger.warning("cryptography库不可用，使用简单哈希方法")
-            if not salt:
-                salt = hashlib.md5(str(hash(password)).encode()).hexdigest()
-            combined = password + salt
-            hashed = hashlib.sha256(combined.encode()).hexdigest()
-            return f"{salt}${hashed}"
-        except Exception as e:
-            logger.error(f"密码加密失败: {str(e)}")
-            # 降级方案：使用简单的哈希
-            if not salt:
-                salt = hashlib.md5(str(hash(password)).encode()).hexdigest()
-            combined = password + salt
-            hashed = hashlib.sha256(combined.encode()).hexdigest()
-            return f"{salt}${hashed}"
+      # 使用PBKDF2算法加密
+      import binascii
+      from cryptography.hazmat.primitives import hashes
+      from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+      from cryptography.hazmat.backends import default_backend
+
+      kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=SecurityUtils.PBKDF2_KEY_LENGTH,
+        salt=salt.encode(),
+        iterations=SecurityUtils.PBKDF2_ITERATIONS,
+        backend=default_backend()
+      )
+
+      key = kdf.derive(password.encode())
+      hashed_password = binascii.hexlify(key).decode()
+
+      # 返回盐值和加密后的密码
+      logger.info("密码加密成功")
+      return f"{salt}${hashed_password}"
+
+    except ValueError:
+      raise
+    except Exception as e:
+      logger.error(f"密码加密失败: {str(e)}")
+      raise RuntimeError(f"密码加密失败: {str(e)}") from e
+
+  @staticmethod
+  def verify_password(password: str, encrypted_password: str) -> bool:
+    """
+    验证密码
+
+    Args:
+        password: 原始密码
+        encrypted_password: 加密后的密码
+
+    Returns:
+        bool: 密码是否正确
+    """
+    if not password or not encrypted_password:
+      logger.warning("密码验证失败: 输入为空")
+      return False
+
+    try:
+      if "$" not in encrypted_password:
+        logger.error("加密密码格式错误")
+        return False
+
+      salt, hashed = encrypted_password.split("$", 1)
+
+      if not salt or not hashed:
+        logger.error("加密密码格式错误: 缺少盐值或哈希值")
+        return False
+
+      # 使用相同的盐值加密输入密码
+      encrypted_input = SecurityUtils.encrypt_password(password, salt)
+      input_salt, input_hashed = encrypted_input.split("$", 1)
+
+      # 使用恒定时间比较防止时序攻击
+      return SecurityUtils._constant_time_compare(input_hashed, hashed)
+
+    except (ValueError, IndexError) as e:
+      logger.error(f"密码验证失败: 格式错误 - {str(e)}")
+      return False
+    except Exception as e:
+      logger.error(f"密码验证失败: {str(e)}")
+      return False
+
+  @staticmethod
+  def _constant_time_compare(a: str, b: str) -> bool:
+    """
+    恒定时间字符串比较
+
+    防止时序攻击
+
+    Args:
+        a: 第一个字符串
+        b: 第二个字符串
+
+    Returns:
+        bool: 字符串是否相等
+    """
+    if len(a) != len(b):
+      return False
+
+    result = 0
+    for x, y in zip(a, b):
+      result |= ord(x) ^ ord(y)
+
+    return result == 0
+
+  @staticmethod
+  def check_password_strength(password: str) -> Dict[str, Any]:
+    """
+    检查密码强度
+
+    Args:
+        password: 要检查的密码
+
+    Returns:
+        Dict[str, Any]: 包含强度等级、分数和建议的字典
+    """
+    if not password:
+      return {
+        "strength": "empty",
+        "score": 0,
+        "suggestions": ["密码不能为空"]
+      }
+
+    score = 0
+    suggestions = []
+
+    # 长度检查
+    length = len(password)
+    if length < SecurityUtils.MIN_PASSWORD_LENGTH:
+      suggestions.append(f"密码长度至少需要 {SecurityUtils.MIN_PASSWORD_LENGTH} 个字符")
+    elif length >= SecurityUtils.MIN_PASSWORD_LENGTH:
+      score += 1
+    if length >= 16:
+      score += 1
+    if length >= 24:
+      score += 1
+
+    # 字符类型检查
+    has_upper = bool(re.search(r"[A-Z]", password))
+    has_lower = bool(re.search(r"[a-z]", password))
+    has_digit = bool(re.search(r"\d", password))
+    has_special = bool(re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", password))
+
+    char_types = sum([has_upper, has_lower, has_digit, has_special])
+    if char_types >= 2:
+      score += 1
+    if char_types >= 3:
+      score += 1
+    if char_types >= 4:
+      score += 1
+
+    # 常见密码检查
+    common_passwords = ["password", "123456", "qwerty", "admin", "letmein"]
+    if password.lower() in common_passwords:
+      score = 0
+      suggestions.append("密码太常见，容易被猜测")
+
+    # 重复字符检查
+    if re.search(r"(.)\1{2,}", password):
+      suggestions.append("密码包含过多重复字符")
+
+    # 连续字符检查
+    if re.search(r"(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789|890)", password.lower()):
+      suggestions.append("密码包含连续字符序列")
+
+    # 计算强度等级
+    if score >= 6:
+      strength = "strong"
+    elif score >= 4:
+      strength = "medium"
+    elif score >= 2:
+      strength = "weak"
+    else:
+      strength = "very_weak"
+
+    return {
+      "strength": strength,
+      "score": min(score, 7),
+      "suggestions": suggestions if suggestions else ["密码强度良好"]
+    }
 
     @staticmethod
     def verify_password(password: str, encrypted_password: str) -> bool:

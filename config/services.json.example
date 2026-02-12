@@ -1,0 +1,87 @@
+{
+  "version": "1.0",
+  "description": "服务注册配置文件",
+  "services": {
+    "config": {
+      "classPath": "src.infrastructure.config.config_manager.ConfigManager",
+      "enabled": true,
+      "description": "配置管理器",
+      "config": {
+        "configFile": "config.json",
+        "autoReload": true,
+        "reloadInterval": 30
+      }
+    },
+    "security": {
+      "classPath": "src.infrastructure.security.security_utils.SecurityUtils",
+      "enabled": true,
+      "description": "安全工具服务",
+      "config": {
+        "encryptionAlgorithm": "PBKDF2-SHA256",
+        "hashIterations": 100000,
+        "saltLength": 16
+      }
+    },
+    "database": {
+      "classPath": "src.data.repositories.database_repository.DatabaseRepository",
+      "enabled": true,
+      "description": "数据库仓储服务",
+      "config": {
+        "maxConnections": 10,
+        "connectionTimeout": 30,
+        "queryTimeout": 30,
+        "autoReconnect": true
+      }
+    },
+    "data": {
+      "classPath": "src.business.services.data_service.DataService",
+      "enabled": true,
+      "description": "数据服务",
+      "config": {
+        "cacheEnabled": true,
+        "cacheTimeout": 300,
+        "maxCacheSize": 1000
+      }
+    },
+    "data_analysis": {
+      "classPath": "src.business.services.data_analysis_service.DataAnalysisService",
+      "enabled": true,
+      "description": "数据分析服务",
+      "config": {
+        "maxConcurrentAnalysis": 5,
+        "resultTimeout": 60
+      }
+    },
+    "logging": {
+      "classPath": "src.infrastructure.logging.logger.LogManager",
+      "enabled": true,
+      "description": "日志管理服务",
+      "config": {
+        "level": "INFO",
+        "outputPath": "./logs",
+        "maxFileSize": 10485760,
+        "maxFiles": 5
+      }
+    },
+    "scaling": {
+      "classPath": "src.infrastructure.utils.scaling_manager.ScalingManager",
+      "enabled": true,
+      "description": "UI 缩放管理服务",
+      "config": {
+        "defaultScale": 1.0,
+        "minScale": 0.8,
+        "maxScale": 2.0,
+        "autoScale": true
+      }
+    }
+  },
+  "dependencies": {
+    "config": [],
+    "security": ["config"],
+    "database": ["config", "security"],
+    "data": ["database", "config"],
+    "data_analysis": ["data", "config"],
+    "logging": ["config"],
+    "scaling": ["config"]
+  }
+}
