@@ -37,6 +37,21 @@ from src.business.services.data_analysis_service import get_data_analysis_servic
 
 logger = logging.getLogger(__name__)
 
+# ==========================================================================
+# 常量定义
+# ==========================================================================
+
+# 数据预览相关常量
+PREVIEW_ROWS = 50  # 预览行数
+PREVIEW_BATCH_SIZE = 10  # 预览分批加载大小
+
+# 图表相关常量
+CHART_WIDTH = 400  # 图表默认宽度
+CHART_HEIGHT = 400  # 图表默认高度
+
+# 统计表格常量
+STATS_COLUMN_COUNT = 9  # 统计表格列数
+
 
 class DataAnalysisDialog(QDialog):
     """
@@ -465,9 +480,12 @@ class DataAnalysisDialog(QDialog):
                 except Exception as e:
                     self.load_finished.emit(False, str(e))
 
-        # 启动加载线程
+        # 启动加载线程（添加清理机制避免内存泄漏）
         self.data_loader = DataLoadThread(self.analysis_service, self.initial_data)
         self.data_loader.load_finished.connect(self.on_initial_data_loaded)
+
+        # 线程完成后自动删除，避免内存泄漏
+        self.data_loader.finished.connect(self.data_loader.deleteLater)
         self.data_loader.start()
 
     def on_initial_data_loaded(self, success, message):
@@ -533,7 +551,7 @@ class DataAnalysisDialog(QDialog):
     
     def update_preview_async(self):
         """异步更新数据预览（分批加载，避免阻塞UI）"""
-        preview = self.analysis_service.get_data_preview(n_rows=50)  # 减少到50行提升速度
+        preview = self.analysis_service.get_data_preview(n_rows=PREVIEW_ROWS)
 
         if 'error' in preview:
             self.preview_info.setText(f"错误: {preview['error']}")

@@ -14,6 +14,13 @@ import logging
 from datetime import datetime
 from functools import partial  # 添加 partial 导入
 
+# ==========================================================================
+# 常量定义
+# ==========================================================================
+
+# 默认日志目录
+DEFAULT_LOG_DIR = "src/log"
+
 from PySide2.QtWidgets import (QApplication, QDialog, QWidget, QVBoxLayout, 
                                QHBoxLayout, QListWidget, QListWidgetItem, 
                                QLabel, QFrame, QPlainTextEdit, QLineEdit, 
@@ -386,9 +393,18 @@ class LogDialog(QDialog):
             self.current_match_index = -1
             self.first_match_position = 0
             self.previous_search_state = None
-            
-            # 设置日志文件路径
-            self.log_dir = "src/log"
+
+            # 设置日志文件路径（使用常量，支持从配置覆盖）
+            self.log_dir = DEFAULT_LOG_DIR
+
+            # 尝试从配置管理器获取日志目录
+            try:
+                from src.infrastructure.config.config_manager import get_config_manager
+                config_dir = get_config_manager().get("paths.log_dir", "")
+                if config_dir:
+                    self.log_dir = config_dir
+            except ImportError:
+                pass  # 使用默认值
             
             # 加载文件列表
             self.load_file_list()
@@ -439,7 +455,9 @@ class LogDialog(QDialog):
                 self.show_message("没有找到日志文件")
                 
         except Exception as e:
-            self.show_message(f"读取文件列表时出错: {str(e)}")
+            error_msg = f"读取文件列表时出错: {str(e)}"
+            self.show_message(error_msg)
+            logger.error(error_msg, exc_info=True)
     
     def on_file_selected(self, item):
         """当文件被选中时，加载并显示文件内容"""

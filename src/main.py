@@ -279,93 +279,9 @@ def handle_startup_error(error: Exception, error_type: str = "未知错误") -> 
 
 def main() -> int:
   """主函数"""
-  # 解析命令行参数
-  parser = argparse.ArgumentParser(
-    description="PySide2 Desktop Application"
-  )
-  parser.add_argument(
-    "-c", "--config",
-    help="Configuration file path",
-    default="config.json"
-  )
-  parser.add_argument(
-    "-v", "--verbose",
-    help="Enable verbose logging",
-    action="store_true"
-  )
-
-  args = parser.parse_args()
-
-  # 定义异常类型到错误描述的映射
-  EXCEPTION_TYPES = (ImportError, ValueError, RuntimeError, OSError)
-
-  exception_handlers = {
-    ImportError: ("导入模块失败",
-                  "请检查依赖库是否已正确安装\n"
-                  "运行: pip install -r requirements.txt"),
-    ValueError: ("参数错误",
-                 "配置参数不正确，请检查配置文件"),
-    RuntimeError: ("运行时错误",
-                   "应用程序运行时发生错误，请查看日志"),
-    OSError: ("系统错误",
-              "操作系统或文件系统错误"),
-  }
-
-  try:
-    # 启用 Qt 自动高 DPI 缩放 - UI/UX Pro Max 规范
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # type: ignore
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)  # type: ignore
-
-    # 创建应用程序实例
-    app = QApplication(sys.argv)
-
-    # 使用 ScalingManager 计算和应用缩放比例
-    # 优先使用DI容器获取服务（如果可用），否则回退到直接获取
-    if DI_AVAILABLE and container and container.is_registered(IScalingManager):
-      scaling_manager = resolve(IScalingManager)
-      logger.debug("通过DI容器获取缩放管理器")
-    else:
-      scaling_manager = get_scaling_manager()
-      logger.debug("通过传统方式获取缩放管理器")
-
-    scale_factor = scaling_manager.calculate_from_screen(app)
-
-    # 设置全局字体，根据缩放比例调整
-    # 使用跨平台字体栈，确保 Windows 7/10 兼容
-    from src.infrastructure.config.constants import UIConfigDefaults
-    base_font_size = 10
-    font = QFont(UIConfigDefaults.FONT_FAMILY, int(base_font_size * scale_factor))  # type: ignore
-    app.setFont(font)
-
-    # 记录应用程序启动
-    logger.info(f"应用程序启动 - 屏幕缩放比例: {scale_factor * 100:.0f}%")
-
-    # 创建主窗口，传递缩放比例
-    window = MainWindow(scale_factor=scale_factor)
-    
-    # 显示窗口（最大化）
-    window.showMaximized()
-    
-    # 运行应用程序
-    sys.exit(app.exec_())
-    
-  except EXCEPTION_TYPES as e:
-    # 处理已知的特定异常类型
-    exc_type = type(e)
-    title, suggestion = exception_handlers[exc_type]
-    error_msg = f"{title}: {str(e)}\n\n建议: {suggestion}"
-    handle_startup_error(e, title)
-    return 1
-    
-  except Exception as e:
-    # 处理未知的其他异常
-    error_msg = f"应用程序启动失败: {str(e)}"
-    logger.critical(f"未预期的错误: {error_msg}", exc_info=True)
-    handle_startup_error(e, "应用程序启动失败")
-    return 1
-
-  # 确保所有路径都有返回值
-  return 0
+  # 使用 Application 类管理应用生命周期
+  app = Application()
+  return app.run()
 
 
 if __name__ == "__main__":
