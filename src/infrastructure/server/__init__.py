@@ -77,6 +77,26 @@ from src.infrastructure.server.windows_integration import (
     create_service_monitor,
 )
 
+from src.infrastructure.server.monitoring import (
+    MetricsCollector,
+    PerformanceDashboard,
+    ConnectionDashboard,
+    LogManager,
+    MonitoringSystem,
+    AlertRule,
+    MetricPoint,
+    create_monitoring_system,
+)
+
+from src.infrastructure.server.api_endpoints import (
+    APIEndpoint,
+    APIRouter,
+    HealthEndpoint,
+    StatusEndpoint,
+    MetricsEndpoint,
+    create_default_api_router,
+)
+
 __all__ = [
     # Concurrency
     'ConnectionPool',
@@ -134,4 +154,20 @@ __all__ = [
     'create_tray_icon',
     'create_startup_manager',
     'create_service_monitor',
+    # Monitoring
+    'MetricsCollector',
+    'PerformanceDashboard',
+    'ConnectionDashboard',
+    'LogManager',
+    'MonitoringSystem',
+    'AlertRule',
+    'MetricPoint',
+    'create_monitoring_system',
+    # API Endpoints
+    'APIEndpoint',
+    'APIRouter',
+    'HealthEndpoint',
+    'StatusEndpoint',
+    'MetricsEndpoint',
+    'create_default_api_router',
 ]
