@@ -39,6 +39,15 @@ from src.infrastructure.server.auth import (
     create_permission_checker,
 )
 
+from src.infrastructure.server.multiprocess import (
+    MasterProcess,
+    MultiProcessServer,
+    WorkerTask,
+    WorkerResult,
+    WorkerState,
+    create_multiprocess_server,
+)
+
 __all__ = [
     # Concurrency
     'ConnectionPool',
@@ -66,4 +75,11 @@ __all__ = [
     'create_auth_manager',
     'create_rate_limiter',
     'create_permission_checker',
+    # Multiprocess
+    'MasterProcess',
+    'MultiProcessServer',
+    'WorkerTask',
+    'WorkerResult',
+    'WorkerState',
+    'create_multiprocess_server',
 ]
