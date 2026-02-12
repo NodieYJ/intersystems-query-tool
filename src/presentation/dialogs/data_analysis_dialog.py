@@ -34,8 +34,13 @@ from PySide2.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PySide2.QtGui import QFont, QColor, QPixmap, QImage
 
 from src.business.services.data_analysis_service import get_data_analysis_service
+from src.presentation.dialogs.gui_utils import stats_cache, GUIErrorHandler
 
 logger = logging.getLogger(__name__)
+
+# 缓存配置
+STATS_CACHE_TTL = 300  # 5分钟
+STATS_CACHE_MAX_SIZE = 20
 
 # ==========================================================================
 # 常量定义
@@ -692,48 +697,85 @@ class DataAnalysisDialog(QDialog):
         self.y_column_combo.addItem("(自动统计)")
         self.y_column_combo.addItems(columns)
     
-    def calculate_statistics(self):
-        """计算统计分析"""
+    def calculate_statistics(self) -> None:
+        """计算统计分析（使用缓存优化）"""
         try:
+            # 生成缓存键
+            df = self.analysis_service.get_dataframe()
+            if df is None:
+                QMessageBox.warning(self, "警告", "请先加载数据")
+                return
+
+            # 使用数据框的内存地址和行数作为缓存键
+            cache_key = f"stats_{id(df)}_{len(df)}"
+
+            # 检查缓存
+            cached_stats = stats_cache.get(cache_key)
+            if cached_stats is not None:
+                logger.debug("使用缓存的统计结果")
+                self._display_statistics(cached_stats)
+                QMessageBox.information(self, "成功", "统计分析完成（使用缓存）")
+                return
+
+            # 计算统计
             stats = self.analysis_service.calculate_statistics()
-            
+
             if 'error' in stats:
                 QMessageBox.warning(self, "错误", f"统计计算失败: {stats['error']}")
                 return
-            
-            # 显示数值统计
-            numeric_stats = stats.get('numeric_statistics', [])
-            self.stats_table.setRowCount(len(numeric_stats))
-            
-            for row_idx, col_stats in enumerate(numeric_stats):
-                self.stats_table.setItem(row_idx, 0, QTableWidgetItem(col_stats['column']))
-                self.stats_table.setItem(row_idx, 1, QTableWidgetItem(str(col_stats['count'])))
-                self.stats_table.setItem(row_idx, 2, QTableWidgetItem(f"{col_stats['mean']:.2f}"))
-                self.stats_table.setItem(row_idx, 3, QTableWidgetItem(f"{col_stats['std']:.2f}"))
-                self.stats_table.setItem(row_idx, 4, QTableWidgetItem(f"{col_stats['min']:.2f}"))
-                self.stats_table.setItem(row_idx, 5, QTableWidgetItem(f"{col_stats['25%']:.2f}"))
-                self.stats_table.setItem(row_idx, 6, QTableWidgetItem(f"{col_stats['50%']:.2f}"))
-                self.stats_table.setItem(row_idx, 7, QTableWidgetItem(f"{col_stats['75%']:.2f}"))
-                self.stats_table.setItem(row_idx, 8, QTableWidgetItem(f"{col_stats['max']:.2f}"))
-            
-            # 显示分类统计
-            categorical_stats = stats.get('categorical_statistics', [])
-            cat_text = ""
-            for cat_stat in categorical_stats:
-                cat_text += f"字段: {cat_stat['column']}\n"
-                cat_text += f"  唯一值数: {cat_stat['unique']}\n"
-                cat_text += f"  最常见值: {cat_stat['top']} (出现 {cat_stat['freq']} 次)\n\n"
-            
-            self.categorical_text.setText(cat_text)
 
-            # 调整统计表格列宽
-            self._adjust_table_columns(self.stats_table)
+            # 缓存结果
+            stats_cache.set(cache_key, stats)
+            logger.debug("统计结果已缓存")
+
+            # 显示统计结果
+            self._display_statistics(stats)
 
             QMessageBox.information(self, "成功", "统计分析完成")
-            
+
         except Exception as e:
-            logger.error(f"计算统计失败: {str(e)}")
-            QMessageBox.critical(self, "错误", f"计算统计失败:\n{str(e)}")
+            GUIErrorHandler.handle_error(
+                context="计算统计",
+                error=e,
+                show_dialog=True,
+                parent=self,
+                logger_instance=logger
+            )
+
+    def _display_statistics(self, stats: Dict[str, Any]) -> None:
+        """
+        显示统计结果
+
+        Args:
+            stats: 统计结果字典
+        """
+        # 显示数值统计
+        numeric_stats = stats.get('numeric_statistics', [])
+        self.stats_table.setRowCount(len(numeric_stats))
+
+        for row_idx, col_stats in enumerate(numeric_stats):
+            self.stats_table.setItem(row_idx, 0, QTableWidgetItem(col_stats['column']))
+            self.stats_table.setItem(row_idx, 1, QTableWidgetItem(str(col_stats['count'])))
+            self.stats_table.setItem(row_idx, 2, QTableWidgetItem(f"{col_stats['mean']:.2f}"))
+            self.stats_table.setItem(row_idx, 3, QTableWidgetItem(f"{col_stats['std']:.2f}"))
+            self.stats_table.setItem(row_idx, 4, QTableWidgetItem(f"{col_stats['min']:.2f}"))
+            self.stats_table.setItem(row_idx, 5, QTableWidgetItem(f"{col_stats['25%']:.2f}"))
+            self.stats_table.setItem(row_idx, 6, QTableWidgetItem(f"{col_stats['50%']:.2f}"))
+            self.stats_table.setItem(row_idx, 7, QTableWidgetItem(f"{col_stats['75%']:.2f}"))
+            self.stats_table.setItem(row_idx, 8, QTableWidgetItem(f"{col_stats['max']:.2f}"))
+
+        # 显示分类统计
+        categorical_stats = stats.get('categorical_statistics', [])
+        cat_text = ""
+        for cat_stat in categorical_stats:
+            cat_text += f"字段: {cat_stat['column']}\n"
+            cat_text += f"  唯一值数: {cat_stat['unique']}\n"
+            cat_text += f"  最常见值: {cat_stat['top']} (出现 {cat_stat['freq']} 次)\n\n"
+
+        self.categorical_text.setText(cat_text)
+
+        # 调整统计表格列宽
+        self._adjust_table_columns(self.stats_table)
     
     def draw_chart(self):
         """绘制图表"""

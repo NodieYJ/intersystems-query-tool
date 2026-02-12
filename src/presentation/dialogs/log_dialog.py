@@ -39,11 +39,20 @@ from PySide2.QtWidgets import (QApplication, QDialog, QWidget, QVBoxLayout,
                                QPushButton, QCheckBox, QFileDialog, QMessageBox,
                                QComboBox)
 from PySide2.QtCore import Qt, QRect, QSize
-from PySide2.QtGui import (QTextCursor, QFont, QTextOption, QColor, QPainter, 
+from PySide2.QtGui import (QTextCursor, QFont, QTextOption, QColor, QPainter,
                           QTextFormat, QPalette, QTextCharFormat, QBrush, QSyntaxHighlighter,
                           QTextDocument)
 
+# 导入缓存工具
+from src.presentation.dialogs.gui_utils import (
+    FileReadUtils, log_content_cache, GUIErrorHandler
+)
+
 logger = logging.getLogger(__name__)
+
+# 缓存配置
+FILE_CACHE_TTL = 600  # 10分钟
+CACHE_MAX_SIZE = 50
 
 class LogLevelHighlighter(QSyntaxHighlighter):
     """
@@ -252,13 +261,28 @@ class TextEditorWithLineNumbers(QPlainTextEdit):
             block_number += 1
 
 class LogDialog(QDialog):
-    """日志对话框"""
+    """
+    日志对话框
 
-    def __init__(self, parent=None):
-        """初始化日志对话框
+    提供日志查看、搜索、高亮显示、导出等功能
+
+    Attributes:
+        log_dir: 日志文件目录路径
+        search_results: 搜索结果列表
+        all_matches: 所有匹配位置列表
+        current_match_index: 当前匹配索引
+
+    Example:
+        >>> dialog = LogDialog(parent=self)
+        >>> dialog.exec_()
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        初始化日志对话框
 
         Args:
-            parent: 父窗口
+            parent: 父窗口，默认为 None
         """
         try:
             logger.debug("开始初始化日志对话框")
@@ -449,8 +473,18 @@ class LogDialog(QDialog):
         if show_dialog:
             QMessageBox.critical(self, "错误", error_msg)
 
-    def load_file_list(self):
-        """加载src/log目录下的所有日志文件到列表（倒序排列）"""
+    def load_file_list(self) -> None:
+        """
+        加载src/log目录下的所有日志文件到列表（倒序排列）
+
+        Returns:
+            None
+
+        Side Effects:
+            - 清空文件列表控件
+            - 填充新的日志文件列表
+            - 自动加载第一个文件（如果存在）
+        """
         # 清空文件列表
         self.file_list.clear()
         
@@ -502,71 +536,143 @@ class LogDialog(QDialog):
         # 加载文件内容
         self.load_file_content(filepath, filename)
     
-    def load_file_content(self, filepath, filename):
-        """加载文件内容到文本编辑器"""
+    def load_file_content(self, filepath: str, filename: str) -> None:
+        """
+        加载文件内容到文本编辑器（使用缓存优化）
+
+        Args:
+            filepath: 文件完整路径
+            filename: 文件名
+        """
         try:
             # 清空当前内容
             self.text_editor.clear()
-            
+
+            # 检查文件是否在缓存中
+            cache_key = f"{filepath}_{FileReadUtils.get_file_hash(filepath)}"
+            cached_content = log_content_cache.get(cache_key)
+
             # 检查文件大小
             file_size = os.path.getsize(filepath)
+
+            if cached_content is not None:
+                # 使用缓存
+                content, line_count = cached_content
+                cursor = self.text_editor.textCursor()
+                cursor.insertText(content)
+                self.text_editor.moveCursor(QTextCursor.Start)
+                file_size_str = self.format_file_size(file_size)
+                self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {line_count}) [已缓存]")
+                logger.debug(f"从缓存加载文件: {filename}")
+                return
+
+            # 缓存未命中，重新加载
             if file_size > 10 * 1024 * 1024:  # 10MB
                 # 大文件，使用分块读取
-                self.load_large_file(filepath, filename, file_size)
+                self.load_large_file(filepath, filename, file_size, cache_key)
             else:
                 # 小文件，直接读取
-                self.load_small_file(filepath, filename, file_size)
-                
+                self.load_small_file(filepath, filename, file_size, cache_key)
+
         except Exception as e:
+            GUIErrorHandler.handle_error(
+                context="加载文件内容",
+                error=e,
+                show_dialog=False,
+                parent=self,
+                logger_instance=logger
+            )
             self.show_message(f"读取文件时出错: {str(e)}")
     
-    def load_small_file(self, filepath, filename, file_size):
-        """加载小文件"""
+    def load_small_file(self, filepath: str, filename: str,
+                         file_size: int, cache_key: str = None) -> None:
+        """
+        加载小文件（支持缓存）
+
+        Args:
+            filepath: 文件路径
+            filename: 文件名
+            file_size: 文件大小
+            cache_key: 缓存键（可选）
+        """
         try:
             # 使用readlines()读取文件内容
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 lines = f.readlines()
-            
+
             # 逐行添加到文本编辑器
             cursor = self.text_editor.textCursor()
             for line in lines:
                 cursor.insertText(line)
-            
+
             # 滚动到顶部
             self.text_editor.moveCursor(QTextCursor.Start)
-            
+
             # 更新状态信息
+            line_count = len(lines)
             file_size_str = self.format_file_size(file_size)
-            self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {len(lines)})")
-            
+            self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {line_count})")
+
+            # 添加到缓存
+            if cache_key:
+                content = ''.join(lines)
+                log_content_cache.set(cache_key, (content, line_count))
+                logger.debug(f"文件已缓存: {filename}")
+
         except UnicodeDecodeError:
             # 如果UTF-8解码失败，尝试其他编码
             try:
                 with open(filepath, 'r', encoding='gbk', errors='ignore') as f:
                     lines = f.readlines()
-                
+
                 cursor = self.text_editor.textCursor()
                 for line in lines:
                     cursor.insertText(line)
-                
+
                 self.text_editor.moveCursor(QTextCursor.Start)
-                
+
+                line_count = len(lines)
                 file_size_str = self.format_file_size(file_size)
-                self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {len(lines)})")
-                
+                self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {line_count})")
+
+                # 添加到缓存
+                if cache_key:
+                    content = ''.join(lines)
+                    log_content_cache.set(cache_key, (content, line_count))
+
             except Exception as e:
+                GUIErrorHandler.handle_error(
+                    context="解码文件",
+                    error=e,
+                    show_dialog=False,
+                    parent=self
+                )
                 self.show_message(f"解码文件时出错: {str(e)}")
     
-    def load_large_file(self, filepath, filename, file_size):
+    def load_large_file(self, filepath: str, filename: str,
+                         file_size: int, cache_key: str = None) -> None:
         """
         加载大文件，使用分块读取（异步方式避免阻塞UI）
+
+        Args:
+            filepath: 文件路径
+            filename: 文件名
+            file_size: 文件大小
+            cache_key: 缓存键（可选）
         """
         # 使用异步方式加载大文件，避免阻塞主线程
-        self._start_async_file_load(filepath, filename, file_size)
+        self._start_async_file_load(filepath, filename, file_size, cache_key)
 
-    def _start_async_file_load(self, filepath, filename, file_size):
+    def _start_async_file_load(self, filepath: str, filename: str,
+                                file_size: int, cache_key: str = None) -> None:
         """
         开始异步文件加载
+
+        Args:
+            filepath: 文件路径
+            filename: 文件名
+            file_size: 文件大小
+            cache_key: 缓存键
         """
         from PySide2.QtCore import QThread, Signal
 
@@ -576,13 +682,13 @@ class LogDialog(QDialog):
             finished = Signal(str, int)  # 文件内容, 行数
             error = Signal(str)  # 错误信息
 
-            def __init__(self, filepath, chunk_size=1024 * 1024):
+            def __init__(self, filepath: str, chunk_size: int = 1024 * 1024):
                 super().__init__()
                 self.filepath = filepath
                 self.chunk_size = chunk_size
                 self.encodings = ['utf-8', 'gbk']
 
-            def run(self):
+            def run(self) -> None:
                 """在后台线程中加载文件"""
                 content = []
                 line_count = 0
@@ -614,6 +720,9 @@ class LogDialog(QDialog):
 
                 self.error.emit("无法解码文件")
 
+        # 保存cache_key到实例变量，供回调使用
+        self._pending_cache_key = cache_key
+
         # 创建并启动加载线程
         self.file_loader = LargeFileLoader(filepath)
         self.file_loader.progress.connect(self._on_file_load_progress)
@@ -630,8 +739,14 @@ class LogDialog(QDialog):
         """文件加载进度回调"""
         self.file_title.setText(f"正在加载... {progress}%")
 
-    def _on_file_load_finished(self, content, line_count):
-        """文件加载完成回调"""
+    def _on_file_load_finished(self, content: str, line_count: int) -> None:
+        """
+        文件加载完成回调
+
+        Args:
+            content: 文件内容
+            line_count: 行数
+        """
         # 清空并设置内容
         self.text_editor.clear()
         cursor = self.text_editor.textCursor()
@@ -645,6 +760,12 @@ class LogDialog(QDialog):
         file_size = os.path.getsize(os.path.join(self.log_dir, filename))
         file_size_str = self.format_file_size(file_size)
         self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {line_count})")
+
+        # 保存到缓存
+        if hasattr(self, '_pending_cache_key') and self._pending_cache_key:
+            log_content_cache.set(self._pending_cache_key, (content, line_count))
+            logger.debug(f"大文件已缓存: {filename}")
+            self._pending_cache_key = None
 
     def _on_file_load_error(self, error_msg):
         """文件加载错误回调"""
