@@ -9,8 +9,9 @@
 
 import logging
 import re
+import time
 import traceback
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from dataclasses import dataclass
 
 from src.data.repositories.database_repository import get_db_repository
@@ -218,8 +219,13 @@ class DataService:
   """
   数据服务类
 
-  提供安全的数据访问功能
+  提供安全的数据访问功能，支持重试机制和超时控制
   """
+
+  # 默认重试配置
+  DEFAULT_MAX_RETRIES = 3
+  DEFAULT_RETRY_DELAY = 1.0  # 秒
+  DEFAULT_TIMEOUT = 30  # 秒
 
   def __init__(self):
     """
@@ -227,6 +233,92 @@ class DataService:
     """
     self.db_repository = get_db_repository()
     self.config_manager = get_config_manager()
+    self._connection_status = "disconnected"
+    self._last_error = None
+    self._retry_count = 0
+
+  def get_connection_status(self) -> Dict[str, Any]:
+    """
+    获取连接状态信息
+
+    Returns:
+        Dict[str, Any]: 包含连接状态信息的字典
+    """
+    return {
+        "status": self._connection_status,
+        "last_error": self._last_error,
+        "retry_count": self._retry_count
+    }
+
+  def _execute_with_retry(
+    self,
+    operation: callable,
+    max_retries: Optional[int] = None,
+    timeout: Optional[float] = None
+  ) -> Any:
+    """
+    执行带重试机制的操作
+
+    Args:
+        operation: 要执行的操作函数
+        max_retries: 最大重试次数
+        timeout: 超时时间（秒）
+
+    Returns:
+        Any: 操作结果
+
+    Raises:
+        Exception: 所有重试失败后抛出异常
+    """
+    max_retries = max_retries or self.DEFAULT_MAX_RETRIES
+    timeout = timeout or self.DEFAULT_TIMEOUT
+    last_exception = None
+
+    import time
+    start_time = time.time()
+
+    for attempt in range(max_retries + 1):
+      try:
+        # 检查超时
+        if time.time() - start_time > timeout:
+          raise TimeoutError(f"操作超时（{timeout}秒）")
+
+        # 执行操作
+        result = operation()
+
+        # 成功，重置重试计数
+        self._retry_count = 0
+        self._last_error = None
+        self._connection_status = "connected"
+
+        return result
+
+      except TimeoutError:
+        self._last_error = f"第 {attempt + 1}/{max_retries + 1} 次尝试: 操作超时"
+        self._connection_status = "timeout"
+
+        if attempt < max_retries:
+          delay = self.DEFAULT_RETRY_DELAY * (2 ** attempt)  # 指数退避
+          logger.warning(f"操作超时，{delay:.1f}秒后重试...")
+          time.sleep(delay)
+        else:
+          raise
+
+      except Exception as e:
+        last_exception = e
+        self._last_error = f"第 {attempt + 1}/{max_retries + 1} 次尝试: {str(e)}"
+        self._connection_status = "error"
+
+        if attempt < max_retries:
+          delay = self.DEFAULT_RETRY_DELAY * (2 ** attempt)  # 指数退避
+          logger.warning(f"操作失败，{delay:.1f}秒后重试...")
+          time.sleep(delay)
+
+    # 所有重试都失败
+    self._retry_count = max_retries + 1
+    if last_exception:
+      raise last_exception
+    raise RuntimeError("操作失败，所有重试都已尝试")
 
   def get_data(
     self, query: str, params: Optional[List[Any]] = None

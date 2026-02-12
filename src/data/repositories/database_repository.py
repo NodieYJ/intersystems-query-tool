@@ -13,7 +13,7 @@ import threading
 import time
 import traceback
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src.infrastructure.config.config_manager import get_config_manager
 from src.infrastructure.config.constants import DatabaseDefaults, DatabaseTypes
@@ -309,7 +309,12 @@ class DatabaseRepository(IQueryRepository):
 
   实现 IQueryRepository 接口。
   负责数据库连接管理和SQL执行。
+  支持重试机制和连接池管理。
   """
+
+  # 默认重试配置
+  DEFAULT_MAX_RETRIES = 3
+  DEFAULT_RETRY_DELAY = 1.0  # 秒
 
   def __init__(self):
     """
@@ -318,6 +323,85 @@ class DatabaseRepository(IQueryRepository):
     self.config_manager = get_config_manager()
     self.connection_pool = ConnectionPool()
     self.logger = logging.getLogger(__name__)
+
+    # 统计信息
+    self._query_count = 0
+    self._error_count = 0
+    self._last_query_time = None
+
+  def get_statistics(self) -> Dict[str, Any]:
+    """
+    获取仓库统计信息
+
+    Returns:
+        Dict[str, Any]: 统计信息字典
+    """
+    return {
+      "query_count": self._query_count,
+      "error_count": self._error_count,
+      "success_rate": (
+        (self._query_count - self._error_count) / self._query_count * 100
+        if self._query_count > 0 else 100
+      ),
+      "pool_size": len(self.connection_pool.connections),
+      "last_query_time": self._last_query_time
+    }
+
+  def _execute_with_retry(
+    self,
+    operation: Callable,
+    max_retries: Optional[int] = None,
+    timeout: Optional[float] = None
+  ) -> Any:
+    """
+    执行带重试机制的操作
+
+    Args:
+        operation: 要执行的操作函数
+        max_retries: 最大重试次数
+        timeout: 超时时间（秒）
+
+    Returns:
+        Any: 操作结果
+    """
+    import time
+    max_retries = max_retries or self.DEFAULT_MAX_RETRIES
+    timeout = timeout or self.connection_pool.query_timeout
+    start_time = time.time()
+
+    last_exception = None
+
+    for attempt in range(max_retries + 1):
+      try:
+        # 检查超时
+        if time.time() - start_time > timeout:
+          raise TimeoutError(f"操作超时（{timeout}秒）")
+
+        result = operation()
+        return result
+
+      except TimeoutError:
+        self._error_count += 1
+        if attempt < max_retries:
+          delay = self.DEFAULT_RETRY_DELAY * (2 ** attempt)
+          self.logger.warning(f"查询超时，{delay:.1f}秒后重试...")
+          time.sleep(delay)
+        else:
+          raise
+
+      except Exception as e:
+        last_exception = e
+        self._error_count += 1
+
+        if attempt < max_retries:
+          delay = self.DEFAULT_RETRY_DELAY * (2 ** attempt)
+          self.logger.warning(f"查询失败，{delay:.1f}秒后重试: {str(e)}")
+          time.sleep(delay)
+
+    self._error_count += 1
+    if last_exception:
+      raise last_exception
+    raise RuntimeError("数据库操作失败，所有重试都已尝试")
 
   def get_connection_params(self) -> Dict[str, Any]:
     """
