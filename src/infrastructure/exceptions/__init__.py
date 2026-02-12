@@ -311,13 +311,28 @@ class DataException(AppException):
     dataOperation: str = None,
     dataSource: str = None,
     errorCode: str = "DATA_001",
+    details: Dict[str, Any] = None,
     **kwargs
   ):
-    details = {'dataOperation': dataOperation, 'dataSource': dataSource}
+    # 清理kwargs中的冲突参数（来自子类的参数）
+    kwargs.pop('errorCode', None)
+    kwargs.pop('dataOperation', None)
+    kwargs.pop('dataSource', None)
+    kwargs.pop('format', None)
+    kwargs.pop('lineNumber', None)
+    kwargs.pop('sourceType', None)
+    kwargs.pop('targetType', None)
+    kwargs.pop('value', None)
+    
+    # 合并details
+    mergedDetails = {'dataOperation': dataOperation, 'dataSource': dataSource}
+    if details:
+      mergedDetails.update(details)
+    
     super().__init__(
       message,
       errorCode=errorCode,
-      details=details,
+      details=mergedDetails,
       **kwargs
     )
 
@@ -333,6 +348,13 @@ class DataParsingException(DataException):
     errorCode: str = "DATA_002",
     **kwargs
   ):
+    # 清理kwargs中的参数，避免传递给父类时冲突
+    kwargs.pop('details', None)
+    kwargs.pop('errorCode', None)
+    kwargs.pop('dataOperation', None)
+    kwargs.pop('dataSource', None)
+    kwargs.pop('format', None)
+    kwargs.pop('lineNumber', None)
     details = {'format': format, 'lineNumber': lineNumber}
     super().__init__(
       message,
@@ -354,6 +376,14 @@ class DataConversionException(DataException):
     errorCode: str = "DATA_003",
     **kwargs
   ):
+    # 清理kwargs中的参数，避免传递给父类时冲突
+    kwargs.pop('details', None)
+    kwargs.pop('errorCode', None)
+    kwargs.pop('dataOperation', None)
+    kwargs.pop('dataSource', None)
+    kwargs.pop('sourceType', None)
+    kwargs.pop('targetType', None)
+    kwargs.pop('value', None)
     details = {
       'sourceType': sourceType,
       'targetType': targetType,
