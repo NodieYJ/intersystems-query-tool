@@ -29,6 +29,14 @@ if os.path.exists(qt_plugin_path):
 else:
     print(f"未找到Qt插件目录: {qt_plugin_path}")
 
+# 导入依赖注入模块（用于服务解析）
+try:
+    from src.infrastructure.di import resolve
+    DI_AVAILABLE = True
+except ImportError:
+    DI_AVAILABLE = False
+    resolve = None
+
 from PySide2.QtCore import Qt
 from PySide2.QtGui import QScreen, QFont
 from PySide2.QtWidgets import QApplication, QMessageBox
@@ -289,6 +297,8 @@ def main() -> int:
   args = parser.parse_args()
 
   # 定义异常类型到错误描述的映射
+  EXCEPTION_TYPES = (ImportError, ValueError, RuntimeError, OSError)
+
   exception_handlers = {
     ImportError: ("导入模块失败",
                   "请检查依赖库是否已正确安装\n"
@@ -311,8 +321,7 @@ def main() -> int:
 
     # 使用 ScalingManager 计算和应用缩放比例
     # 优先使用DI容器获取服务（如果可用），否则回退到直接获取
-    if container and container.is_registered(IScalingManager):
-      from src.infrastructure.di import resolve
+    if DI_AVAILABLE and container and container.is_registered(IScalingManager):
       scaling_manager = resolve(IScalingManager)
       logger.debug("通过DI容器获取缩放管理器")
     else:
@@ -340,7 +349,7 @@ def main() -> int:
     # 运行应用程序
     sys.exit(app.exec_())
     
-  except tuple(exception_handlers.keys()) as e:
+  except EXCEPTION_TYPES as e:
     # 处理已知的特定异常类型
     exc_type = type(e)
     title, suggestion = exception_handlers[exc_type]

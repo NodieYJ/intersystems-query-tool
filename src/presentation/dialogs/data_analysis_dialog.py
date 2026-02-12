@@ -378,7 +378,7 @@ class DataAnalysisDialog(QDialog):
         config_layout.addStretch()
         layout.addWidget(config_group)
 
-        layout.addWidget(group)
+        layout.addWidget(config_group)
         
         # 图表显示区域
         self.chart_container = QWidget()

@@ -12,6 +12,7 @@ import os
 import re
 import logging
 from datetime import datetime
+from functools import partial  # 添加 partial 导入
 
 from PySide2.QtWidgets import (QApplication, QDialog, QWidget, QVBoxLayout, 
                                QHBoxLayout, QListWidget, QListWidgetItem, 
@@ -357,12 +358,12 @@ class LogDialog(QDialog):
             # 导航按钮
             self.up_button = QPushButton("↑")
             self.up_button.setFixedWidth(30)
-            self.up_button.clicked.connect(lambda: self.perform_search('up'))
+            self.up_button.clicked.connect(partial(self.perform_search, 'up'))
             search_layout.addWidget(self.up_button)
             
             self.down_button = QPushButton("↓")
             self.down_button.setFixedWidth(30)
-            self.down_button.clicked.connect(lambda: self.perform_search('down'))
+            self.down_button.clicked.connect(partial(self.perform_search, 'down'))
             search_layout.addWidget(self.down_button)
             
             # 选项
@@ -510,65 +511,97 @@ class LogDialog(QDialog):
                 self.show_message(f"解码文件时出错: {str(e)}")
     
     def load_large_file(self, filepath, filename, file_size):
-        """加载大文件，使用分块读取"""
-        try:
-            # 获取文件信息
-            file_size_str = self.format_file_size(file_size)
-            self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 正在加载...)")
-            
-            # 分块读取文件，避免内存占用过高
-            chunk_size = 1024 * 1024  # 1MB
-            line_count = 0
-            
-            # 使用文本游标
-            cursor = self.text_editor.textCursor()
-            
-            # 使用readlines(sizehint)方法分块读取
-            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                while True:
-                    # 读取指定大小的块
-                    lines = f.readlines(chunk_size)
-                    if not lines:
-                        break
-                    
-                    # 添加行到文本编辑器
-                    for line in lines:
-                        cursor.insertText(line)
-                        line_count += 1
-                    
-                    # 处理UI事件，避免界面冻结
-                    QApplication.processEvents()
-            
-            # 滚动到顶部
-            self.text_editor.moveCursor(QTextCursor.Start)
-            
-            # 更新状态信息
-            self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {line_count})")
-            
-        except UnicodeDecodeError:
-            # 如果UTF-8解码失败，尝试其他编码
-            try:
-                cursor = self.text_editor.textCursor()
+        """
+        加载大文件，使用分块读取（异步方式避免阻塞UI）
+        """
+        # 使用异步方式加载大文件，避免阻塞主线程
+        self._start_async_file_load(filepath, filename, file_size)
+
+    def _start_async_file_load(self, filepath, filename, file_size):
+        """
+        开始异步文件加载
+        """
+        from PySide2.QtCore import QThread, Signal
+
+        class LargeFileLoader(QThread):
+            """大文件异步加载线程"""
+            progress = Signal(int)  # 进度百分比
+            finished = Signal(str, int)  # 文件内容, 行数
+            error = Signal(str)  # 错误信息
+
+            def __init__(self, filepath, chunk_size=1024 * 1024):
+                super().__init__()
+                self.filepath = filepath
+                self.chunk_size = chunk_size
+                self.encodings = ['utf-8', 'gbk']
+
+            def run(self):
+                """在后台线程中加载文件"""
+                content = []
                 line_count = 0
-                
-                with open(filepath, 'r', encoding='gbk', errors='ignore') as f:
-                    while True:
-                        lines = f.readlines(chunk_size)
-                        if not lines:
-                            break
-                        
-                        for line in lines:
-                            cursor.insertText(line)
-                            line_count += 1
-                        
-                        QApplication.processEvents()
-                
-                self.text_editor.moveCursor(QTextCursor.Start)
-                
-                self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {line_count})")
-                
-            except Exception as e:
-                self.show_message(f"解码大文件时出错: {str(e)}")
+                file_size = os.path.getsize(self.filepath)
+
+                for encoding in self.encodings:
+                    try:
+                        with open(self.filepath, 'r', encoding=encoding, errors='ignore') as f:
+                            while True:
+                                lines = f.readlines(self.chunk_size)
+                                if not lines:
+                                    break
+                                content.extend(lines)
+                                line_count += len(lines)
+
+                                # 发送进度
+                                progress = min(100, int(f.tell() / file_size * 100))
+                                self.progress.emit(progress)
+
+                        # 成功加载
+                        self.finished.emit(''.join(content), line_count)
+                        return
+
+                    except UnicodeDecodeError:
+                        continue
+                    except Exception as e:
+                        self.error.emit(str(e))
+                        return
+
+                self.error.emit("无法解码文件")
+
+        # 创建并启动加载线程
+        self.file_loader = LargeFileLoader(filepath)
+        self.file_loader.progress.connect(self._on_file_load_progress)
+        self.file_loader.finished.connect(self._on_file_load_finished)
+        self.file_loader.error.connect(self._on_file_load_error)
+        self.file_loader.finished.connect(self.file_loader.deleteLater)
+        self.file_loader.start()
+
+        # 更新标题
+        file_size_str = self.format_file_size(file_size)
+        self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 正在加载...)")
+
+    def _on_file_load_progress(self, progress):
+        """文件加载进度回调"""
+        self.file_title.setText(f"正在加载... {progress}%")
+
+    def _on_file_load_finished(self, content, line_count):
+        """文件加载完成回调"""
+        # 清空并设置内容
+        self.text_editor.clear()
+        cursor = self.text_editor.textCursor()
+        cursor.insertText(content)
+
+        # 滚动到顶部
+        self.text_editor.moveCursor(QTextCursor.Start)
+
+        # 更新标题
+        filename = self.file_list.currentItem().text() if self.file_list.currentItem() else "未知"
+        file_size = os.path.getsize(os.path.join(self.log_dir, filename))
+        file_size_str = self.format_file_size(file_size)
+        self.file_title.setText(f"文件: {filename} (大小: {file_size_str}, 行数: {line_count})")
+
+    def _on_file_load_error(self, error_msg):
+        """文件加载错误回调"""
+        self.show_message(f"加载文件时出错: {error_msg}")
     
     def format_file_size(self, size_bytes):
         """格式化文件大小"""
