@@ -48,6 +48,35 @@ from src.infrastructure.server.multiprocess import (
     create_multiprocess_server,
 )
 
+from src.infrastructure.server.websocket_server import (
+    WebSocketServer,
+    WebSocketHandler,
+    TransferSession,
+    ConnectionInfo,
+    ConnectionState,
+    create_websocket_server,
+)
+
+from src.infrastructure.server.file_transfer import (
+    FileTransferManager,
+    TransferInfo,
+    TransferStatus,
+    StorageManager,
+    TransferQueue,
+    ChecksumVerifier,
+    create_file_transfer_manager,
+)
+
+from src.infrastructure.server.windows_integration import (
+    ServerTrayIcon,
+    WindowsServiceBase,
+    StartupManager,
+    ServiceMonitor,
+    create_tray_icon,
+    create_startup_manager,
+    create_service_monitor,
+)
+
 __all__ = [
     # Concurrency
     'ConnectionPool',
@@ -82,4 +111,27 @@ __all__ = [
     'WorkerResult',
     'WorkerState',
     'create_multiprocess_server',
+    # WebSocket
+    'WebSocketServer',
+    'WebSocketHandler',
+    'TransferSession',
+    'ConnectionInfo',
+    'ConnectionState',
+    'create_websocket_server',
+    # File Transfer
+    'FileTransferManager',
+    'TransferInfo',
+    'TransferStatus',
+    'StorageManager',
+    'TransferQueue',
+    'ChecksumVerifier',
+    'create_file_transfer_manager',
+    # Windows Integration
+    'ServerTrayIcon',
+    'WindowsServiceBase',
+    'StartupManager',
+    'ServiceMonitor',
+    'create_tray_icon',
+    'create_startup_manager',
+    'create_service_monitor',
 ]
