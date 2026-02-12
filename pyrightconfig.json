@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode-pyright/schemas/pyright.schema.json",
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/node_modules",
+    "**/.git",
+    "tests",
+    "docs"
+  ],
+  "ignore": [
+    "src/old",
+    "**/backup_*.py"
+  ],
+  "stubPath": "src/stubs",
+  "venvPath": ".",
+  "venv": "",
+  "pythonVersion": "3.8",
+  "pythonPlatform": "Windows",
+  "executionEnvironments": [
+    {
+      "root": "src",
+      "pythonVersion": "3.8",
+      "extraPaths": [
+        "src"
+      ]
+    }
+  ],
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportOptionalCall": false,
+  "reportOptionalIterable": false,
+  "reportOptionalMemberAccess": false,
+  "reportOptionalOperand": false,
+  "reportOptionalSubscript": false,
+  "reportPrivateImportUsage": false,
+  "reportUnboundVariable": true,
+  "reportUndefinedVariable": true,
+  "reportGeneralTypeIssues": true,
+  "reportInvalidTypeForm": false
+}

@@ -1,4 +1,16 @@
 # ===========================================
+# 项目配置 (Project Configuration)
+# ===========================================
+#
+# Python 版本要求: >=3.8,<3.9
+# 目标平台: Windows 7 SP1+ (Python 3.8.10 是 Win7 支持的最后一个版本)
+#
+# ===========================================
+
+[project]
+requires-python = ">=3.8,<3.9"
+
+# ===========================================
 # 测试配置 (Test Configuration)
 # ===========================================
 #
@@ -45,3 +57,21 @@ show_missing = true
 
 [tool.coverage.html]
 html_directory = "coverage_html"
+
+[tool.black]
+target-version = ['py38']
+line-length = 88
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''

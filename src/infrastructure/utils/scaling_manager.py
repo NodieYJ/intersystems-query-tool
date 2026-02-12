@@ -10,7 +10,7 @@
 
 import logging
 import threading
-from typing import Optional
+from typing import Optional, Tuple
 
 from PySide2.QtWidgets import QApplication
 from PySide2.QtGui import QScreen
@@ -64,7 +64,7 @@ class ScalingManager:
             return
             
         self._scale_factor: float = 1.0
-        self._screen_resolution: tuple[int, int] = (1920, 1080)
+        self._screen_resolution: Tuple[int, int] = (1920, 1080)
         self._screen_dpi: float = 96.0
         ScalingManager._initialized = True
         
