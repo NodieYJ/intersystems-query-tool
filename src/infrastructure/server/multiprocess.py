@@ -175,6 +175,7 @@ class MasterProcess:
         
         self._running = False
         self._monitor_task: Optional[asyncio.Task] = None
+        self._health_check_task: Optional[asyncio.Task] = None  # 新增: 健康检查任务
         self._pending_tasks: Dict[str, asyncio.Future] = {}
         self._task_counter = 0
         
@@ -203,6 +204,9 @@ class MasterProcess:
         
         # 启动监控任务
         self._monitor_task = asyncio.create_task(self._monitor_loop())
+        
+        # 启动健康检查任务
+        self._health_check_task = asyncio.create_task(self._health_check_loop())
         
         logger.info(f"MasterProcess started with {self._num_workers} workers")
     
@@ -247,6 +251,14 @@ class MasterProcess:
             self._monitor_task.cancel()
             try:
                 await self._monitor_task
+            except asyncio.CancelledError:
+                pass
+        
+        # 停止健康检查任务
+        if self._health_check_task:
+            self._health_check_task.cancel()
+            try:
+                await self._health_check_task
             except asyncio.CancelledError:
                 pass
         
@@ -334,7 +346,11 @@ class MasterProcess:
             result_dict = await asyncio.wait_for(future, timeout=timeout)
             return WorkerResult(**result_dict)
         except asyncio.TimeoutError:
-            del self._pending_tasks[task_id]
+            # 修复: 取消Future避免内存泄漏
+            if task_id in self._pending_tasks:
+                future = self._pending_tasks.pop(task_id)
+                if not future.done():
+                    future.cancel()
             return WorkerResult(
                 task_id=task_id,
                 success=False,
@@ -355,23 +371,63 @@ class MasterProcess:
         """监控循环 - 收集结果"""
         while self._running:
             try:
-                # 收集结果
-                while not self._result_queue.empty():
-                    try:
-                        result_dict = self._result_queue.get_nowait()
-                        task_id = result_dict.get('task_id')
-                        
-                        if task_id and task_id in self._pending_tasks:
-                            future = self._pending_tasks.pop(task_id)
-                            if not future.done():
-                                future.set_result(result_dict)
-                    except queue.Empty:
-                        break
-                
-                await asyncio.sleep(0.01)
+                # 修复: 使用阻塞get替代empty()检查，避免竞争条件
+                try:
+                    result_dict = await asyncio.get_event_loop().run_in_executor(
+                        None,
+                        self._result_queue.get,
+                        True,   # block
+                        0.1     # timeout
+                    )
+                    
+                    task_id = result_dict.get('task_id')
+                    if task_id and task_id in self._pending_tasks:
+                        future = self._pending_tasks.pop(task_id)
+                        if not future.done():
+                            future.set_result(result_dict)
+                            
+                except queue.Empty:
+                    await asyncio.sleep(0.01)
                 
             except Exception as e:
                 logger.error(f"Monitor error: {e}")
+    
+    async def _health_check_loop(self) -> None:
+        """健康检查循环 - 监控Worker状态并自动重启"""
+        check_interval = 10.0  # 每10秒检查一次
+        
+        while self._running:
+            try:
+                await asyncio.sleep(check_interval)
+                
+                if not self._running:
+                    break
+                
+                # 检查每个Worker的状态
+                for worker_id in list(self._workers.keys()):
+                    process = self._workers.get(worker_id)
+                    
+                    if process is None:
+                        continue
+                    
+                    # 检查进程是否还在运行
+                    if not process.is_alive():
+                        logger.warning(f"Worker {worker_id} is dead, restarting...")
+                        
+                        # 停止死掉的Worker
+                        await self._stop_worker(worker_id)
+                        
+                        # 重启Worker
+                        success = await self._start_worker(worker_id)
+                        if success:
+                            logger.info(f"Worker {worker_id} restarted successfully")
+                        else:
+                            logger.error(f"Failed to restart worker {worker_id}")
+                            
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Health check error: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""
