@@ -10,6 +10,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from typing import Dict, Tuple
 
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import (
@@ -79,14 +80,35 @@ class ConnectionConfigDialog(QDialog):
         self.update_connection_status(False)
 
     def get_config_file_path(self):
-        """获取配置文件路径"""
-        user_home = os.path.expanduser("~")
-        config_dir = os.path.join(user_home, ".app_configs")
-        config_file = os.path.join(config_dir, "database_connections.json")
-        
+        """
+        获取配置文件路径 - 使用统一的配置路径服务
+
+        Returns:
+            str: 配置文件完整路径
+        """
+        from src.infrastructure.config.config_manager import get_config_manager
+        config_manager = get_config_manager()
+
+        # 尝试从配置管理器获取路径，如果未设置则使用默认值
+        config_dir = config_manager.get("paths.config_dir", "")
+
+        if not config_dir:
+            # 使用默认值
+            user_home = os.path.expanduser("~")
+            config_dir = os.path.join(user_home, ".app_configs")
+
+        # 确保目录存在
         if not os.path.exists(config_dir):
-            os.makedirs(config_dir, exist_ok=True)
-        
+            try:
+                os.makedirs(config_dir, exist_ok=True)
+            except Exception as e:
+                logger.error(f"创建配置目录失败: {str(e)}")
+                # 回退到临时目录
+                import tempfile
+                config_dir = tempfile.gettempdir()
+
+        config_file = os.path.join(config_dir, "database_connections.json")
+
         return config_file
 
     def load_configurations(self):
@@ -310,58 +332,53 @@ class ConnectionConfigDialog(QDialog):
         
         main_layout.addWidget(results_group)
 
-    def test_connection(self):
-        """测试数据库连接"""
-        try:
-            server = self.server_edit.text().strip()
-            port = self.port_edit.text().strip()
-            namespace = self.namespace_edit.text().strip()
-            username = self.username_edit.text().strip()
-            password = self.password_edit.text().strip()
+    def _get_connection_params(self) -> Dict[str, str]:
+        """
+        获取连接参数 - 提取公共方法减少代码重复
 
-            if not server:
-                QMessageBox.warning(self, "警告", "数据库地址不能为空")
-                return
+        Returns:
+            Dict[str, str]: 包含连接参数的字典
+        """
+        return {
+            'server': self.server_edit.text().strip(),
+            'port': self.port_edit.text().strip(),
+            'namespace': self.namespace_edit.text().strip(),
+            'username': self.username_edit.text().strip(),
+            'password': self.password_edit.text().strip(),
+            'db_type': self.db_type_combo.currentText()
+        }
 
-            if not port.isdigit():
-                QMessageBox.warning(self, "警告", "端口号必须是数字")
-                return
+    def _validate_connection_params(self, params: Dict[str, str]) -> Tuple[bool, str]:
+        """
+        验证连接参数
 
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self.add_result(f"[{timestamp}] 开始测试连接...")
-            self.add_result(f"数据库类型: {self.db_type_combo.currentText()}")
-            self.add_result(f"数据库地址: {server}")
-            self.add_result(f"端口号: {port}")
-            self.add_result(f"命名空间: {namespace}")
-            self.add_result(f"用户名: {username}")
-            self.add_result(f"密码: {'*' * len(password)}")
+        Args:
+            params: 连接参数字典
 
-            # 保存到配置管理器
-            self.config_manager.set("database.server", server)
-            self.config_manager.set("database.port", int(port))
-            self.config_manager.set("database.namespace", namespace)
-            self.config_manager.set("database.username", username)
-            self.config_manager.set("database.password", password)
-            self.config_manager.set("database.db_type", self.db_type_combo.currentText())
+        Returns:
+            tuple: (是否有效, 错误消息)
+        """
+        if not params['server']:
+            return False, "数据库地址不能为空"
 
-            # 模拟测试连接
-            from src.business.services.data_service import get_data_service
-            data_service = get_data_service()
-            result = data_service.test_connection()
+        if not params['port'].isdigit():
+            return False, "端口号必须是数字"
 
-            if result:
-                self.add_result(f"[{timestamp}] ✅ 连接测试成功!")
-                QMessageBox.information(self, "测试结果", "连接测试成功!")
-            else:
-                self.add_result(f"[{timestamp}] ❌ 连接测试失败!")
-                QMessageBox.warning(self, "测试结果", "连接测试失败，请检查连接参数")
+        return True, ""
 
-        except Exception as e:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            error_msg = f"测试连接失败: {str(e)}"
-            self.add_result(f"[{timestamp}] ❌ {error_msg}")
-            logger.error(error_msg)
-            QMessageBox.critical(self, "错误", error_msg)
+    def _apply_connection_params(self, params: Dict[str, str]):
+        """
+        应用连接参数到配置管理器
+
+        Args:
+            params: 连接参数字典
+        """
+        self.config_manager.set("database.server", params['server'])
+        self.config_manager.set("database.port", int(params['port']))
+        self.config_manager.set("database.namespace", params['namespace'])
+        self.config_manager.set("database.username", params['username'])
+        self.config_manager.set("database.password", params['password'])
+        self.config_manager.set("database.db_type", params['db_type'])
 
     def save_config(self):
         """保存配置"""
@@ -450,29 +467,19 @@ class ConnectionConfigDialog(QDialog):
             QMessageBox.critical(self, "错误", error_msg)
 
     def connect_database(self):
-        """连接数据库"""
+        """连接数据库 - 使用公共方法减少代码重复"""
         try:
-            server = self.server_edit.text().strip()
-            port = self.port_edit.text().strip()
-            namespace = self.namespace_edit.text().strip()
-            username = self.username_edit.text().strip()
-            password = self.password_edit.text().strip()
-            db_type = self.db_type_combo.currentText()
+            # 获取连接参数
+            params = self._get_connection_params()
 
-            if not server:
-                QMessageBox.warning(self, "警告", "数据库地址不能为空")
+            # 验证参数
+            is_valid, error_msg = self._validate_connection_params(params)
+            if not is_valid:
+                QMessageBox.warning(self, "警告", error_msg)
                 return
 
-            if not port.isdigit():
-                QMessageBox.warning(self, "警告", "端口号必须是数字")
-                return
-
-            self.config_manager.set("database.server", server)
-            self.config_manager.set("database.port", int(port))
-            self.config_manager.set("database.namespace", namespace)
-            self.config_manager.set("database.username", username)
-            self.config_manager.set("database.password", password)
-            self.config_manager.set("database.db_type", db_type)
+            # 应用参数到配置管理器
+            self._apply_connection_params(params)
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.add_result(f"[{timestamp}] 🔄 开始建立数据库连接...")

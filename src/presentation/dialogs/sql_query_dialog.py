@@ -261,15 +261,23 @@ class EnhancedSqlEditor(QTextEdit):
 # 定义工作线程类
 class QueryWorker(QRunnable):
     """
-    查询工作线程
+    查询工作线程 - 使用 QRunnable 实现线程安全查询
+
+    Attributes:
+        query: SQL 查询语句
+        params: 查询参数
+        signals: 工作信号（结果、错误、进度）
+        data_service: 数据服务实例
+        tab: 关联的查询标签页引用
     """
-    def __init__(self, query: str, params: Optional[List[Any]] = None):
+    def __init__(self, query: str, params: Optional[List[Any]] = None, tab: Optional['QueryTab'] = None):
         super().__init__()
         self.query = query
         self.params = params
         self.signals = WorkerSignals()
         self.data_service = get_data_service()
-    
+        self.tab = tab  # 存储 tab 引用
+
     @Slot()
     def run(self):
         """
@@ -849,30 +857,18 @@ class SqlQueryDialog(QDialog):
 
     def show_available_tables_in_tab(self, tab):
         """
-        在指定标签页中显示数据库中的可用表
+        在指定标签页中显示数据库中的可用表（异步加载）
         """
-        try:
-            # 查询数据库中的表
-            result = self.data_service.get_data("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'")
-            if result:
-                table_names = [row.get('TABLE_NAME') for row in result if row.get('TABLE_NAME')]
-                if table_names:
-                    self.status_bar.showMessage(f"数据库中的表: {', '.join(table_names[:5])}{'...' if len(table_names) > 5 else ''}")
-                    
-                    # 在SQL输入框中添加提示
-                    example_sql = f"-- 可用的表: {', '.join(table_names[:3])}{'...' if len(table_names) > 3 else ''}\n-- 示例: SELECT * FROM {table_names[0]} LIMIT 10;"
-                    if not tab.sql_edit.toPlainText().strip():
-                        tab.sql_edit.setText(example_sql)
-                else:
-                    self.status_bar.showMessage("数据库中没有表")
-            else:
-                self.status_bar.showMessage("无法获取表信息")
-        except Exception as e:
-            self.status_bar.showMessage(f"获取表信息失败: {str(e)}")
+        # 使用现有的异步加载机制，避免阻塞主线程
+        self.load_database_objects_async()
+        
+        # 更新状态栏
+        self.status_bar.showMessage("正在加载数据库表信息...")
 
     def load_database_objects_async(self):
         """
         异步加载数据库对象（使用后台线程，避免阻塞UI）
+        使用 Qt.AutoConnection 确保信号安全，线程完成后自动清理
         """
         self.status_bar.showMessage("正在加载数据库对象...")
         
@@ -902,10 +898,12 @@ class SqlQueryDialog(QDialog):
                 except Exception as e:
                     self.load_error.emit(str(e))
         
-        # 创建并启动加载线程
+        # 创建并启动加载线程（使用 Qt.AutoConnection 和 finished 信号清理）
         self.db_loader = DatabaseObjectLoader(self.data_service)
-        self.db_loader.objects_loaded.connect(self.on_database_objects_loaded)
-        self.db_loader.load_error.connect(self.on_database_objects_error)
+        self.db_loader.objects_loaded.connect(self.on_database_objects_loaded, Qt.AutoConnection)
+        self.db_loader.load_error.connect(self.on_database_objects_error, Qt.AutoConnection)
+        # 线程完成后自动删除，避免内存泄漏
+        self.db_loader.finished.connect(self.db_loader.deleteLater)
         self.db_loader.start()
     
     def on_database_objects_loaded(self, tables_result, views_result):
@@ -1140,11 +1138,11 @@ WHERE TABLE_NAME = '{object_name}';"
             import time
             tab.query_start_time = time.time()
 
-            # 创建工作线程
-            worker = QueryWorker(sanitized_sql)
-            worker.signals.result.connect(lambda result: self.on_query_finished_in_tab(tab, result))
-            worker.signals.error.connect(lambda error: self.on_query_error_in_tab(tab, error))
-            
+            # 创建工作线程（传递 tab 引用）
+            worker = QueryWorker(sanitized_sql, tab=tab)
+            worker.signals.result.connect(self.on_query_finished)
+            worker.signals.error.connect(self.on_query_error)
+
             # 启动线程
             self.thread_pool.start(worker)
             
@@ -1156,9 +1154,35 @@ WHERE TABLE_NAME = '{object_name}';"
             tab.is_querying = False
             tab.progress_bar.setVisible(False)
 
-    def on_query_finished_in_tab(self, tab, result):
+    def on_query_finished(self, result):
         """
-        查询完成回调
+        查询完成回调 - 从 worker 获取 tab 引用
+        """
+        # 获取当前正在执行的 worker
+        for i in range(self.thread_pool.activeThreadCount()):
+            # 通过结果匹配找到对应的 worker
+            pass
+
+        # 由于可能有多个并发查询，我们使用 sender() 获取发送者
+        worker = self.sender()
+        if worker and hasattr(worker, 'tab'):
+            self._process_query_result(worker.tab, result)
+
+    def on_query_error(self, error_message):
+        """
+        查询错误回调 - 从 worker 获取 tab 引用
+        """
+        worker = self.sender()
+        if worker and hasattr(worker, 'tab'):
+            self._handle_query_error(worker.tab, error_message)
+
+    def _process_query_result(self, tab, result):
+        """
+        处理查询结果 - 内部方法
+
+        Args:
+            tab: 查询标签页
+            result: 查询结果
         """
         try:
             tab.is_querying = False
@@ -1185,10 +1209,10 @@ WHERE TABLE_NAME = '{object_name}';"
             )
 
             tab.total_rows = len(result)
-            
+
             # 计算总页数
             tab.total_pages = (tab.total_rows + tab.page_size - 1) // tab.page_size
-            
+
             # 存储所有数据
             if result:
                 columns = list(result[0].keys())
@@ -1210,21 +1234,21 @@ WHERE TABLE_NAME = '{object_name}';"
 
             # 显示结果
             tab.display_result(result[:tab.page_size] if result else [])
-            
+
             # 更新信息标签
             tab.row_count_label.setText(f"行数: {tab.total_rows}")
             tab.column_count_label.setText(f"列数: {len(result[0].keys()) if result else 0}")
             tab.query_time_label.setText(f"查询时间: {execution_time:.2f}ms")
-            
+
             # 更新分页信息
             tab.update_pagination()
-            
+
             # 更新状态栏
             self.update_status_bar('query', '完成')
             self.update_status_bar('results', str(tab.total_rows))
             self.update_status_bar('time', f'{execution_time:.2f}ms')
             self.update_status_bar('message', f'查询成功，返回 {tab.total_rows} 行')
-            
+
             logger.info(f"查询成功，返回{tab.total_rows}条记录，执行时间{execution_time:.2f}ms")
         except Exception as e:
             error_msg = f"处理查询结果失败: {str(e)}"
@@ -1232,9 +1256,13 @@ WHERE TABLE_NAME = '{object_name}';"
             self.update_status_bar('message', f'处理结果失败: {str(e)}')
             QMessageBox.critical(self, "错误", f"处理查询结果时出错:\n{str(e)}")
 
-    def on_query_error_in_tab(self, tab, error_message):
+    def _handle_query_error(self, tab, error_message):
         """
-        查询错误回调
+        处理查询错误 - 内部方法
+
+        Args:
+            tab: 查询标签页
+            error_message: 错误信息
         """
         tab.is_querying = False
         tab.progress_bar.setVisible(False)

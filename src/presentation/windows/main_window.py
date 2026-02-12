@@ -111,7 +111,7 @@ class SQLSyntaxHighlighter(QSyntaxHighlighter):
                 self.setFormat(match.start(), match.end() - match.start(), self.keyword_format)
 
 
-class ModernMainWindow(QMainWindow):
+class MainWindow(QMainWindow):
     """
     现代化主窗口 - 侧边栏导航设计
     功能页面直接嵌入右侧内容区
@@ -1392,9 +1392,7 @@ class ModernMainWindow(QMainWindow):
             }}
         """)
 
-
-# 保持向后兼容
-MainWindow = ModernMainWindow
+    # 类名已统一为 MainWindow，无需向后兼容别名
 
 
 def main():
@@ -1413,7 +1411,7 @@ def main():
     font = QFont('Microsoft YaHei', int(10 * scale_factor))
     app.setFont(font)
 
-    window = ModernMainWindow(scale_factor=scale_factor)
+    window = MainWindow(scale_factor=scale_factor)
     window.show()
 
     sys.exit(app.exec_())
