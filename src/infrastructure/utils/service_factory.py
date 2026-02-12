@@ -33,7 +33,7 @@ from src.infrastructure.utils.scaling_manager import ScalingManager, get_scaling
 from src.business.services.data_analysis_service import DataAnalysisService, get_data_analysis_service
 from src.business.services.data_service import DataService, get_data_service
 from src.business.services.query_history_manager import QueryHistoryManager, get_query_history_manager
-from src.data.repositories.database_repository import DatabaseRepository, get_db_repository
+from src.data.repositories.database_repository import DatabaseRepository, getDbRepository
 from src.data.repositories.driver_factory import DatabaseDriverFactory, get_driver_factory
 
 logger = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ class ServiceFactory:
                 
                 # 第四层：数据层服务
                 cls._get_service_impl(DatabaseDriverFactory, get_driver_factory)
-                cls._get_service_impl(DatabaseRepository, get_db_repository)
+                cls._get_service_impl(DatabaseRepository, getDbRepository)
                 
                 # 第五层：业务层服务
                 cls._get_service_impl(QueryHistoryManager, get_query_history_manager)
@@ -177,7 +177,7 @@ class ServiceFactory:
     @classmethod
     def get_db_repository(cls) -> DatabaseRepository:
         """获取数据库仓库实例"""
-        return cls._get_service_impl(DatabaseRepository, get_db_repository)
+        return cls._get_service_impl(DatabaseRepository, getDbRepository)
 
     @classmethod
     def get_query_history_manager(cls) -> QueryHistoryManager:

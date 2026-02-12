@@ -10,7 +10,7 @@ import logging
 import traceback
 from typing import Any, Dict, List, Optional
 
-from src.data.repositories.database_repository import get_db_repository
+from src.data.repositories.database_repository import getDbRepository
 from src.infrastructure.config.config_manager import get_config_manager
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class DataService:
         """
         初始化数据服务
         """
-        self.db_repository = get_db_repository()
+        self.db_repository = getDbRepository()
         self.config_manager = get_config_manager()
 
     def get_data(
