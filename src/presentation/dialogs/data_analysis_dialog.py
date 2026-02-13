@@ -124,7 +124,7 @@ class DataAnalysisDialog(QDialog):
         
         self.export_btn = QPushButton("导出分析报告")
         self.export_btn.clicked.connect(self.export_report)
-        self.export_btn.setStyleSheet("background-color: #2196F3; color: white; padding: 8px;")
+        self.export_btn.setObjectName('btn_primary')
         button_layout.addWidget(self.export_btn)
         
         button_layout.addStretch()
@@ -193,7 +193,7 @@ class DataAnalysisDialog(QDialog):
         self.load_btn.clicked.connect(self.load_data)
         self.load_btn.setStyleSheet("""
             QPushButton {
-                background-color: #4CAF50;
+                background-color: {COLORS['success']};
                 color: white;
                 padding: 10px;
                 font-size: 12px;
@@ -212,7 +212,7 @@ class DataAnalysisDialog(QDialog):
         self.data_info_label.setAlignment(Qt.AlignCenter)
         self.data_info_label.setStyleSheet("""
             QLabel {
-                color: gray;
+                color: {COLORS['text_secondary']};
                 padding: 20px;
                 font-size: 12px;
                 border: 1px dashed #ccc;
@@ -278,7 +278,7 @@ class DataAnalysisDialog(QDialog):
         # 预览提示信息
         self.preview_info = QLabel("请先加载数据")
         self.preview_info.setAlignment(Qt.AlignCenter)
-        self.preview_info.setStyleSheet("color: gray; padding: 10px;")
+        self.preview_info.setStyleSheet(f"color: {COLORS['text_secondary']}; padding: 10px;")
         preview_layout.addWidget(self.preview_info)
 
         # 初始隐藏预览区域
@@ -296,7 +296,7 @@ class DataAnalysisDialog(QDialog):
         # 计算统计按钮
         self.calc_stats_btn = QPushButton("计算统计分析")
         self.calc_stats_btn.clicked.connect(self.calculate_statistics)
-        self.calc_stats_btn.setStyleSheet("background-color: #FF9800; color: white; padding: 8px;")
+        self.calc_stats_btn.setObjectName('btn_warning')
         layout.addWidget(self.calc_stats_btn)
 
         # 统计结果表格
@@ -392,7 +392,7 @@ class DataAnalysisDialog(QDialog):
         # 绘制按钮
         self.draw_btn = QPushButton("绘制图表")
         self.draw_btn.clicked.connect(self.draw_chart)
-        self.draw_btn.setStyleSheet("background-color: #9C27B0; color: white; padding: 5px 15px;")
+        self.draw_btn.setObjectName('btn_primary')
         config_layout.addWidget(self.draw_btn)
 
         config_layout.addStretch()
@@ -408,6 +408,7 @@ class DataAnalysisDialog(QDialog):
         # 如果有 PyQtGraph，使用 GraphicsLayoutWidget
         if HAS_PYQTGRAPH:
           from pyqtgraph import GraphicsLayoutWidget
+from src.presentation.windows.main_window import COLORS
           self.chart_view = GraphicsLayoutWidget()
           chart_layout.addWidget(self.chart_view)
         else:
@@ -464,7 +465,7 @@ class DataAnalysisDialog(QDialog):
 
         self.is_loading = True
         self.data_info_label.setText("正在加载数据...")
-        self.data_info_label.setStyleSheet("color: blue; padding: 20px;")
+        self.data_info_label.setStyleSheet(f"color: {COLORS['primary']}; padding: 20px;")
 
         # 创建后台线程加载数据
         class DataLoadThread(QThread):
@@ -505,7 +506,7 @@ class DataAnalysisDialog(QDialog):
             self.statusBar().showMessage("数据加载完成", 3000) if hasattr(self, 'statusBar') else None
         else:
             self.data_info_label.setText(f"加载失败: {message}")
-            self.data_info_label.setStyleSheet("color: red; padding: 20px;")
+            self.data_info_label.setStyleSheet(f"color: {COLORS['error']}; padding: 20px;")
             QMessageBox.warning(self, "失败", f"数据加载失败:\n{message}")
 
     def load_initial_data(self):
@@ -552,7 +553,7 @@ class DataAnalysisDialog(QDialog):
         if df is not None:
             info_text = f"数据已加载 - 行数: {len(df)}, 列数: {len(df.columns)}"
             self.data_info_label.setText(info_text)
-            self.data_info_label.setStyleSheet("color: green; padding: 20px;")
+            self.data_info_label.setStyleSheet(f"color: {COLORS['success']}; padding: 20px;")
     
     def update_preview_async(self):
         """异步更新数据预览（分批加载，避免阻塞UI）"""

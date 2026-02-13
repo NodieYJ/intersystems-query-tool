@@ -16,6 +16,7 @@ from PySide2.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QListWidget,
                                QLabel, QMessageBox, QCheckBox, QAbstractItemView)
 
 from src.business.services.query_history_manager import get_query_history_manager
+from src.presentation.windows.main_window import COLORS
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ class QueryHistoryDialog(QDialog):
         button_layout = QHBoxLayout()
         
         self.use_btn = QPushButton("使用此SQL")
-        self.use_btn.setStyleSheet("background-color: #4CAF50; color: white; padding: 8px;")
+        self.use_btn.setObjectName('btn_success')
         self.use_btn.clicked.connect(self.on_use_clicked)
         button_layout.addWidget(self.use_btn)
         
@@ -124,12 +125,12 @@ class QueryHistoryDialog(QDialog):
         button_layout.addStretch()
         
         self.delete_btn = QPushButton("删除")
-        self.delete_btn.setStyleSheet("background-color: #f44336; color: white;")
+        self.delete_btn.setObjectName('btn_danger')
         self.delete_btn.clicked.connect(self.on_delete_clicked)
         button_layout.addWidget(self.delete_btn)
         
         self.clear_all_btn = QPushButton("清空全部")
-        self.clear_all_btn.setStyleSheet("background-color: #ff9800; color: white;")
+        self.clear_all_btn.setObjectName('btn_warning')
         self.clear_all_btn.clicked.connect(self.on_clear_all_clicked)
         button_layout.addWidget(self.clear_all_btn)
         
