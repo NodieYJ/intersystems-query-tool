@@ -15,6 +15,8 @@ from datetime import datetime
 from functools import partial
 from typing import Dict, List, Optional, Tuple, Any
 
+from src.presentation.windows.main_window import COLORS
+
 # ==========================================================================
 # 常量定义
 # ==========================================================================
@@ -352,7 +354,7 @@ class LogDialog(QDialog):
             # 添加导出按钮
             export_btn = QPushButton("导出当前日志")
             export_btn.clicked.connect(self.export_current_log)
-            export_btn.setStyleSheet("background-color: #4CAF50; color: white; padding: 5px;")
+            export_btn.setObjectName('btn_success')
             left_layout.addWidget(export_btn)
             
             # 右侧文本显示区域

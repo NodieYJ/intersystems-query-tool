@@ -26,6 +26,7 @@ from src.business.services.query_history_manager import get_query_history_manage
 from src.infrastructure.config.config_manager import get_config_manager
 from src.infrastructure.security.security_utils import get_security_utils
 from src.presentation.dialogs.query_history_dialog import QueryHistoryDialog
+from src.presentation.windows.main_window import COLORS
 
 logger = logging.getLogger(__name__)
 
@@ -329,7 +330,7 @@ class QueryTab(QWidget):
         execute_btn = QPushButton("执行查询 (F5)")
         execute_btn.clicked.connect(self.execute_query)
         execute_btn.setShortcut(QKeySequence("F5"))
-        execute_btn.setStyleSheet("background-color: #4CAF50; color: white; padding: 8px;")
+        execute_btn.setObjectName('btn_success')
         
         clear_btn = QPushButton("清空SQL")
         clear_btn.clicked.connect(self.clear_sql)
@@ -648,7 +649,7 @@ class SqlQueryDialog(QDialog):
         # 添加历史按钮
         history_btn = QPushButton("历史")
         history_btn.clicked.connect(self.show_query_history)
-        history_btn.setStyleSheet("background-color: #FF9800; color: white;")
+        history_btn.setObjectName('btn_warning')
         
         db_layout.addWidget(self.db_path_label)
         db_layout.addStretch()
@@ -694,7 +695,7 @@ class SqlQueryDialog(QDialog):
         # 导出按钮
         export_btn = QPushButton("导出数据")
         export_btn.clicked.connect(self.show_export_menu)
-        export_btn.setStyleSheet("background-color: #2196F3; color: white; padding: 10px;")
+        export_btn.setObjectName('btn_primary')
         query_layout.addWidget(export_btn)
         
         main_splitter.addWidget(query_area)
