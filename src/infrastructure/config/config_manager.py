@@ -172,26 +172,26 @@ class ConfigManager:
     }
     logger.info("使用默认配置")
 
-    def get(self, key: str, default: Any = None) -> Any:
-        """
-        获取配置值
+  def get(self, key: str, default: Any = None) -> Any:
+    """
+    获取配置值
 
-        Args:
-            key: 配置键，支持嵌套键，如 "database.server"
-            default: 默认值
+    Args:
+        key: 配置键，支持嵌套键，如 "database.server"
+        default: 默认值
 
-        Returns:
-            Any: 配置值
-        """
-        keys = key.split(".")
-        value = self.config
+    Returns:
+        Any: 配置值
+    """
+    keys = key.split(".")
+    value = self.config
 
-        try:
-            for k in keys:
-                value = value[k]
-            return value
-        except (KeyError, TypeError):
-            return default
+    try:
+      for k in keys:
+        value = value[k]
+      return value
+    except (KeyError, TypeError):
+      return default
 
   def set(self, key: str, value: Any) -> bool:
     """

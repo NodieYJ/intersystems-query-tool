@@ -971,7 +971,7 @@ class DatabaseRepository(IQueryRepository):
       QueryExecutionException: 查询执行失败
     """
     try:
-      results = self.executeQuery(query, params)
+      results = self.execute_query(query, params)
       if results and len(results) > 0:
         firstRow = results[0]
         if firstRow:
@@ -987,6 +987,90 @@ class DatabaseRepository(IQueryRepository):
         sql=query,
         parameters=self._sanitize_params(params)
       )
+
+  # ============================================================================
+  # IQueryRepository 接口方法（camelCase别名）
+  # ============================================================================
+
+  def executeQuery(
+    self,
+    sql: str,
+    parameters: Optional[List[Any]] = None
+  ) -> List[Dict[str, Any]]:
+    """
+    执行查询SQL（IQueryRepository接口方法）
+
+    Args:
+      sql: SQL查询语句
+      parameters: 查询参数列表
+
+    Returns:
+      List[Dict[str, Any]]: 查询结果列表
+    """
+    return self.execute_query(sql, parameters)
+
+  def executeNonQuery(
+    self,
+    sql: str,
+    parameters: Optional[List[Any]] = None
+  ) -> int:
+    """
+    执行非查询SQL（IQueryRepository接口方法）
+
+    Args:
+      sql: SQL语句
+      parameters: 参数列表
+
+    Returns:
+      int: 受影响的行数（固定返回1表示成功）
+    """
+    success = self.execute_non_query(sql, parameters)
+    return 1 if success else 0
+
+  def executeScalar(
+    self,
+    sql: str,
+    parameters: Optional[List[Any]] = None
+  ) -> Any:
+    """
+    执行查询并返回单个值（IQueryRepository接口方法）
+
+    Args:
+      sql: SQL语句
+      parameters: 参数列表
+
+    Returns:
+      Any: 查询结果的第一个值
+    """
+    return self.execute_scalar(sql, parameters)
+
+  def test_connection(self) -> bool:
+    """
+    测试数据库连接（IQueryRepository接口方法）
+
+    Returns:
+      bool: 连接是否成功
+    """
+    try:
+      connectionParams = self.get_connection_params()
+      connCursor = self.connection_pool.get_connection(connectionParams)
+      if connCursor:
+        conn, _ = connCursor
+        self.connection_pool.release_connection(conn)
+        return True
+      return False
+    except Exception as e:
+      self.logger.error(f"连接测试失败: {str(e)}")
+      return False
+
+  def get_connection_info(self) -> Dict[str, Any]:
+    """
+    获取连接信息（IQueryRepository接口方法）
+
+    Returns:
+      Dict[str, Any]: 连接信息字典
+    """
+    return self.get_connection_params()
 
   def close(self):
     """

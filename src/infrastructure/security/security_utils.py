@@ -284,179 +284,151 @@ class SecurityUtils:
       "suggestions": suggestions if suggestions else ["密码强度良好"]
     }
 
-    @staticmethod
-    def verify_password(password: str, encrypted_password: str) -> bool:
-        """
-        验证密码
+  @staticmethod
+  def validate_input(input_str: str, validation_type: str) -> bool:
+    """
+    验证输入
 
-        Args:
-            password: 原始密码
-            encrypted_password: 加密后的密码
+    Args:
+        input_str: 输入字符串
+        validation_type: 验证类型
 
-        Returns:
-            bool: 密码是否正确
-        """
-        try:
-            if "$" not in encrypted_password:
-                logger.error("加密密码格式错误")
-                return False
-            
-            salt, hashed = encrypted_password.split("$", 1)
-            
-            # 使用相同的盐值加密输入密码
-            encrypted_input = SecurityUtils.encrypt_password(password, salt)
-            input_salt, input_hashed = encrypted_input.split("$", 1)
-            
-            return input_hashed == hashed
-        except Exception as e:
-            logger.error(f"密码验证失败: {str(e)}")
-            return False
+    Returns:
+        bool: 输入是否有效
+    """
+    validations = {
+      "server": r"^[a-zA-Z0-9.-]+$",
+      "port": r"^[0-9]+$",
+      "namespace": r"^[a-zA-Z0-9_]+$",
+      "username": r"^[a-zA-Z0-9_]+$",
+      "password": r".+",
+      "db_type": r"^(IRIS|Cache)$",
+      "sql_query": r".+",
+    }
 
-    @staticmethod
-    def validate_input(input_str: str, validation_type: str) -> bool:
-        """
-        验证输入
+    if validation_type not in validations:
+      logger.error(f"未知的验证类型: {validation_type}")
+      return False
 
-        Args:
-            input_str: 输入字符串
-            validation_type: 验证类型
+    pattern = validations[validation_type]
+    return bool(re.match(pattern, input_str))
 
-        Returns:
-            bool: 输入是否有效
-        """
-        validations = {
-            "server": r"^[a-zA-Z0-9.-]+$",
-            "port": r"^[0-9]+$",
-            "namespace": r"^[a-zA-Z0-9_]+$",
-            "username": r"^[a-zA-Z0-9_]+$",
-            "password": r".+",
-            "db_type": r"^(IRIS|Cache)$",
-            "sql_query": r".+",
-        }
+  @staticmethod
+  def execute_query_safe(
+    connection, 
+    query: str, 
+    params: Optional[Tuple] = None
+  ) -> Optional[List[Dict]]:
+    """
+    使用参数化查询安全执行SQL
 
-        if validation_type not in validations:
-            logger.error(f"未知的验证类型: {validation_type}")
-            return False
+    Args:
+        connection: 数据库连接对象
+        query: SQL查询语句，使用 ? 作为参数占位符
+        params: 查询参数元组
 
-        pattern = validations[validation_type]
-        return bool(re.match(pattern, input_str))
+    Returns:
+        Optional[List[Dict]]: 查询结果列表，失败返回None
 
-    @staticmethod
-    def execute_query_safe(
-        connection, 
-        query: str, 
-        params: Optional[Tuple] = None
-    ) -> Optional[List[Dict]]:
-        """
-        使用参数化查询安全执行SQL
+    Example:
+        >>> results = execute_query_safe(conn, 
+        ...                              "SELECT * FROM users WHERE id = ?", 
+        ...                              (user_id,))
+    """
+    if not connection:
+      logger.error("数据库连接为空")
+      return None
 
-        Args:
-            connection: 数据库连接对象
-            query: SQL查询语句，使用 ? 作为参数占位符
-            params: 查询参数元组
+    cursor = None
+    try:
+      cursor = connection.cursor()
 
-        Returns:
-            Optional[List[Dict]]: 查询结果列表，失败返回None
+      if params:
+        cursor.execute(query, params)
+      else:
+        cursor.execute(query)
 
-        Example:
-            >>> results = execute_query_safe(conn, 
-            ...                              "SELECT * FROM users WHERE id = ?", 
-            ...                              (user_id,))
-        """
-        if not connection:
-            logger.error("数据库连接为空")
-            return None
+      # 获取列名
+      columns = [desc[0] for desc in cursor.description] if cursor.description else []
 
-        cursor = None
-        try:
-            cursor = connection.cursor()
+      # 转换为字典列表
+      results = []
+      for row in cursor.fetchall():
+        results.append(dict(zip(columns, row)))
 
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
+      return results
 
-            # 获取列名
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+    except Exception as e:
+      logger.error(f"查询执行失败: {e}")
+      return None
+    finally:
+      if cursor:
+        cursor.close()  # type: ignore
 
-            # 转换为字典列表
-            results = []
-            for row in cursor.fetchall():
-                results.append(dict(zip(columns, row)))
+  @staticmethod
+  def validate_sql_query(query: str) -> bool:
+    """
+    验证SQL查询是否安全
 
-            return results
+    Args:
+        query: SQL查询语句
 
-        except Exception as e:
-            logger.error(f"查询执行失败: {e}")
-            return None
-        finally:
-            if cursor:
-                cursor.close()  # type: ignore
+    Returns:
+        bool: 查询是否安全
+    """
+    # 检查危险的SQL关键字
+    dangerous_keywords = [
+      "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "INSERT",
+      "UPDATE", "EXEC", "EXECUTE", "xp_", "sp_"
+    ]
 
-    @staticmethod
-    def validate_sql_query(query: str) -> bool:
-        """
-        验证SQL查询是否安全
+    query_upper = query.upper()
+    for keyword in dangerous_keywords:
+      if f" {keyword} " in query_upper or query_upper.startswith(keyword + " "):
+        logger.warning(f"检测到危险的SQL关键字: {keyword}")
+        return False
 
-        Args:
-            query: SQL查询语句
+    return True
 
-        Returns:
-            bool: 查询是否安全
-        """
-        # 检查危险的SQL关键字
-        dangerous_keywords = [
-            "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "INSERT",
-            "UPDATE", "EXEC", "EXECUTE", "xp_", "sp_"
-        ]
+  @staticmethod
+  def generate_token(length: int = 32) -> str:
+    """
+    生成安全的随机令牌
 
-        query_upper = query.upper()
-        for keyword in dangerous_keywords:
-            if f" {keyword} " in query_upper or query_upper.startswith(keyword + " "):
-                logger.warning(f"检测到危险的SQL关键字: {keyword}")
-                return False
+    Args:
+        length: 令牌长度
 
-        return True
+    Returns:
+        str: 随机令牌
+    """
+    try:
+      import secrets
+      return secrets.token_hex(length // 2)
+    except ImportError:
+      # 如果secrets库不可用，使用os.urandom
+      import os
+      return base64.b64encode(os.urandom(length)).decode()[:length]
 
-    @staticmethod
-    def generate_token(length: int = 32) -> str:
-        """
-        生成安全的随机令牌
+  @staticmethod
+  def secure_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    安全处理配置字典
 
-        Args:
-            length: 令牌长度
+    Args:
+        config: 原始配置字典
 
-        Returns:
-            str: 随机令牌
-        """
-        try:
-            import secrets
-            return secrets.token_hex(length // 2)
-        except ImportError:
-            # 如果secrets库不可用，使用os.urandom
-            import os
-            return base64.b64encode(os.urandom(length)).decode()[:length]
+    Returns:
+        Dict[str, any]: 安全处理后的配置字典
+    """
+    secured_config = config.copy()
 
-    @staticmethod
-    def secure_config(config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        安全处理配置字典
+    # 加密数据库密码
+    if "database" in secured_config and "password" in secured_config["database"]:
+      password = secured_config["database"]["password"]
+      if password and not "$" in password:
+        secured_config["database"]["password"] = SecurityUtils.encrypt_password(password)
 
-        Args:
-            config: 原始配置字典
-
-        Returns:
-            Dict[str, any]: 安全处理后的配置字典
-        """
-        secured_config = config.copy()
-
-        # 加密数据库密码
-        if "database" in secured_config and "password" in secured_config["database"]:
-            password = secured_config["database"]["password"]
-            if password and not "$" in password:
-                secured_config["database"]["password"] = SecurityUtils.encrypt_password(password)
-
-        return secured_config
+    return secured_config
 
 
 def sanitize_sql_input(input_str: str) -> str:

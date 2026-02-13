@@ -294,6 +294,12 @@ class SecurityAuditLogger:
       }
     )
 
+  def close(self) -> None:
+    """关闭日志处理器并释放资源"""
+    if hasattr(self, 'file_handler') and self.file_handler:
+      self.file_handler.close()
+      logger.removeHandler(self.file_handler)
+
 
 # 创建全局安全审计日志器实例
 audit_logger = SecurityAuditLogger()

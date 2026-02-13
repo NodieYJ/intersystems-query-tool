@@ -11,6 +11,7 @@ import sys
 import json
 import tempfile
 import shutil
+import logging
 
 # 添加项目根目录
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -36,6 +37,12 @@ class TestSecurityAuditLogger(unittest.TestCase):
 
   def tearDown(self):
     """清理测试环境"""
+    # 关闭日志处理器释放文件
+    if hasattr(self, 'audit_logger'):
+      self.audit_logger.close()
+    # 等待文件句柄释放
+    import time
+    time.sleep(0.1)
     if os.path.exists(self.test_dir):
       shutil.rmtree(self.test_dir)
 

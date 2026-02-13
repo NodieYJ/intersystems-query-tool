@@ -144,10 +144,10 @@ class TestRateLimiter(unittest.TestCase):
     # 重置该客户端
     self.limiter.reset("client4")
 
-    # 应该可以重新请求
+    # 应该可以重新请求（check_rate_limit会消耗1个请求，所以剩余2）
     allowed, remaining, _ = self.limiter.check_rate_limit("client4")
     self.assertTrue(allowed)
-    self.assertEqual(remaining, 3)
+    self.assertEqual(remaining, 2)
 
   def test_reset_all(self):
     """测试重置所有客户端"""
