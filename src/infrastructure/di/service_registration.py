@@ -212,9 +212,51 @@ def register_database_services(container: DIContainer) -> None:
             IDatabaseDriverFactory,
             DatabaseDriverFactory
         )
-        logger.debug("注册数据库服务完成")
+        logger.debug("注册数据库驱动工厂完成")
     except Exception as e:
-        logger.warning(f"注册数据库服务失败: {e}")
+        logger.warning(f"注册数据库驱动工厂失败: {e}")
+
+
+def register_repository_services(container: DIContainer) -> None:
+    """
+    注册数据仓库服务
+    
+    Args:
+        container: DI容器实例
+    """
+    try:
+        from src.infrastructure.interfaces import IQueryRepository
+        from src.data.repositories.database_repository import DatabaseRepository
+        
+        # 数据库仓库注册为单例
+        container.register_singleton(
+            IQueryRepository,
+            DatabaseRepository
+        )
+        logger.debug("注册数据仓库服务完成")
+    except Exception as e:
+        logger.warning(f"注册数据仓库服务失败: {e}")
+
+
+def register_business_services(container: DIContainer) -> None:
+    """
+    注册业务层服务
+    
+    Args:
+        container: DI容器实例
+    """
+    try:
+        from src.infrastructure.interfaces import IDataService
+        from src.business.services.data_service import DataService
+        
+        # 数据服务注册为单例
+        container.register_singleton(
+            IDataService,
+            DataService
+        )
+        logger.debug("注册业务层服务完成")
+    except Exception as e:
+        logger.warning(f"注册业务层服务失败: {e}")
 
 
 def register_security_service(container: DIContainer) -> None:
@@ -278,8 +320,12 @@ def configure_application_services(container: DIContainer) -> None:
     
     # 2. 数据访问层服务
     register_database_services(container)
+    register_repository_services(container)
     
-    # 3. 表示层服务
+    # 3. 业务层服务
+    register_business_services(container)
+    
+    # 4. 表示层服务
     register_presentation_services(container)
     
     # 记录注册的服务
