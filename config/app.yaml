@@ -1,0 +1,72 @@
+database:
+  pool:
+    acquire_timeout: 5.0
+    max_connections: 10
+    max_lifetime: 3600
+    query_timeout: 30
+    timeout: 30
+  retry:
+    delay: 1.0
+    max_retries: 3
+logging:
+  backup_count: 5
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+  max_size: 10485760
+security:
+  password:
+    algorithm: PBKDF2HMAC
+    hash_algorithm: SHA256
+    iterations: 100000
+    salt_length: 16
+  query:
+    forbidden_keywords:
+    - DROP
+    - DELETE FROM
+    - TRUNCATE
+    - ALTER
+    - CREATE
+    - INSERT INTO
+    - UPDATE
+    - EXEC
+    - xp_
+    - sp_
+    max_query_length: 10000
+    require_params: true
+  rate_limit:
+    enabled: true
+    max_requests: 100
+    window: 60
+ui:
+  colors:
+    background: '#F8FAFC'
+    border: '#E2E8F0'
+    divider: '#F1F5F9'
+    error: '#EF4444'
+    info: '#3B82F6'
+    primary: '#2563EB'
+    primary_hover: '#1D4ED8'
+    primary_light: '#DBEAFE'
+    secondary: '#3B82F6'
+    success: '#10B981'
+    surface: '#FFFFFF'
+    text_disabled: '#94A3B8'
+    text_inverse: '#FFFFFF'
+    text_primary: '#1E293B'
+    text_secondary: '#64748B'
+    warning: '#F59E0B'
+  fonts:
+    family: Microsoft YaHei, Segoe UI, sans-serif
+    sizes:
+      header: 24
+      large: 16
+      normal: 14
+      small: 12
+      title: 20
+  scaling:
+    base_width: 1920
+    enabled: true
+    factors:
+      1k: 1.0
+      2k: 1.5
+      3k: 2.0
