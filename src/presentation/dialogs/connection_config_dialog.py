@@ -20,6 +20,7 @@ from PySide2.QtWidgets import (
 )
 
 from src.infrastructure.config.config_manager import get_config_manager
+from src.presentation.windows.main_window import COLORS
 
 logger = logging.getLogger(__name__)
 
@@ -250,16 +251,7 @@ class ConnectionConfigDialog(QDialog):
         # 连接按钮 - UI/UX Pro Max: 强调按钮
         self.connect_button = QPushButton("🔗 连接")
         self.connect_button.setMinimumHeight(36)
-        self.connect_button.setStyleSheet("""
-            QPushButton {
-                background-color: #10B981;
-                color: white;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #059669;
-            }
-        """)
+        self.connect_button.setObjectName('btn_success')
         self.connect_button.clicked.connect(self.connect_database)
         management_layout.addWidget(self.connect_button)
         
@@ -281,13 +273,13 @@ class ConnectionConfigDialog(QDialog):
         status_layout.addWidget(QLabel("状态:"))
         
         self.status_label = QLabel("未连接")
-        self.status_label.setStyleSheet("color: #EF4444; font-weight: bold;")
+        self.status_label.setStyleSheet(f"color: {COLORS['error']}; font-weight: bold;")
         status_layout.addWidget(self.status_label)
         
         status_layout.addSpacing(16)
         
         self.status_details = QLabel("")
-        self.status_details.setStyleSheet("color: #64748B;")
+        self.status_details.setStyleSheet(f"color: {COLORS['text_secondary']};")
         status_layout.addWidget(self.status_details)
         status_layout.addStretch()
         
@@ -508,7 +500,7 @@ class ConnectionConfigDialog(QDialog):
         """更新连接状态"""
         if connected:
             self.status_label.setText("已连接")
-            self.status_label.setStyleSheet("color: #10B981; font-weight: bold;")
+            self.status_label.setStyleSheet(f"color: {COLORS['success']}; font-weight: bold;")
             server = self.server_edit.text().strip()
             port = self.port_edit.text().strip()
             namespace = self.namespace_edit.text().strip()
@@ -523,7 +515,7 @@ class ConnectionConfigDialog(QDialog):
                     pass
         else:
             self.status_label.setText("未连接")
-            self.status_label.setStyleSheet("color: #EF4444; font-weight: bold;")
+            self.status_label.setStyleSheet(f"color: {COLORS['error']}; font-weight: bold;")
             self.status_details.setText("")
             
             # 更新主窗口标题栏显示
