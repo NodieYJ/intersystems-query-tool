@@ -143,16 +143,9 @@ class Application:
     self._app.setApplicationVersion("1.0.0")
     self._app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
-    # 设置全局样式
-    self._app.setStyleSheet("""
-      QMainWindow {
-        background-color: #f5f5f5;
-      }
-      QWidget {
-        font-family: 'Segoe UI', Arial, sans-serif;
-        font-size: 14px;
-      }
-    """)
+    # 应用全局QSS样式
+    from src.presentation.utils.theme_manager import apply_app_stylesheet
+    apply_app_stylesheet(self._app)
 
     logger.info("Qt application created")
 
