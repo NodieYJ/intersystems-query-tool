@@ -11,6 +11,10 @@ import threading
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
+# SQL智能补全功能导入
+from src.presentation.widgets.sql_completer import SQLCompleter
+from src.business.services.metadata_sync_service import create_metadata_sync_service
+
 from PySide2.QtCore import Qt, QThreadPool, QRunnable, Slot, QObject, Signal, QRegExp
 from PySide2.QtWidgets import (QDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton,
                                QTableWidget, QTableWidgetItem, QTextEdit,
@@ -194,33 +198,40 @@ class EnhancedSqlEditor(QTextEdit):
     
     def setup_autocomplete(self):
         """
-        设置自动补全
+        设置自动补全 - 使用SQL智能补全组件
         """
-        # 自动补全的单词列表
-        keywords = [
-            'SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP',
-            'ALTER', 'TABLE', 'VIEW', 'INDEX', 'TRIGGER', 'PROCEDURE', 'FUNCTION',
-            'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON', 'AS', 'GROUP',
-            'BY', 'HAVING', 'ORDER', 'LIMIT', 'OFFSET', 'AND', 'OR', 'NOT',
-            'IN', 'LIKE', 'BETWEEN', 'IS', 'NULL', 'TRUE', 'FALSE'
-        ]
+        # 创建智能补全器（初始为空，稍后会通过set_connection_id设置）
+        self.sql_completer = SQLCompleter(self, 'default')
         
-        functions = [
-            'SUM', 'COUNT', 'AVG', 'MAX', 'MIN', 'ROUND', 'TRUNCATE', 'CONCAT',
-            'SUBSTRING', 'LENGTH', 'UPPER', 'LOWER', 'DATE', 'TIME', 'NOW', 'CURDATE',
-            'CURTIME', 'DATEDIFF', 'TIMEDIFF', 'CAST', 'CONVERT'
-        ]
+        # 连接文本变化信号
+        self.textChanged.connect(self._on_text_changed)
+    
+    def set_connection_id(self, connection_id: str):
+        """
+        设置连接标识符，用于元数据补全
         
-        # 合并所有单词
-        all_words = keywords + functions
+        Args:
+            connection_id: 数据库连接标识符
+        """
+        if hasattr(self, 'sql_completer') and self.sql_completer:
+            self.sql_completer.update_connection(connection_id)
+    
+    def update_metadata_cache(self, tables_data: List[dict]):
+        """
+        更新元数据缓存
         
-        # 创建自动补全器
-        self.completer = QCompleter(all_words, self)
-        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.completer.setWidget(self)
-        
-        # 连接信号
-        self.completer.activated.connect(self.insert_completion)
+        Args:
+            tables_data: 表元数据列表
+        """
+        if hasattr(self, 'sql_completer') and self.sql_completer:
+            self.sql_completer.set_metadata(tables_data)
+    
+    def _on_text_changed(self):
+        """
+        文本变化时触发智能补全
+        """
+        if hasattr(self, 'sql_completer') and self.sql_completer:
+            self.sql_completer.refresh_suggestions()
     
     def insert_completion(self, completion):
         """
@@ -234,30 +245,17 @@ class EnhancedSqlEditor(QTextEdit):
     
     def keyPressEvent(self, event):
         """
-        处理按键事件
+        处理按键事件 - 与智能补全器协同工作
         """
-        if self.completer and self.completer.popup().isVisible():
-            if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Escape, Qt.Key_Tab):
-                event.ignore()
-                return
+        # 如果智能补全器弹出窗口可见，处理特殊按键
+        if hasattr(self, 'sql_completer') and self.sql_completer:
+            completer_popup = self.sql_completer.popup()
+            if completer_popup and completer_popup.isVisible():
+                if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Escape, Qt.Key_Tab):
+                    event.ignore()
+                    return
         
         super().keyPressEvent(event)
-        
-        # 触发自动补全
-        if event.key() in (Qt.Key_Space, Qt.Key_Period) or event.text().isalnum():
-            tc = self.textCursor()
-            tc.select(Qt.TextCursor.WordUnderCursor)
-            self.completer.setCompletionPrefix(tc.selectedText())
-            popup = self.completer.popup()
-            popup.setCurrentIndex(self.completer.completionModel().index(0, 0))
-            
-            # 计算弹出位置
-            cr = self.cursorRect()
-            cr.setWidth(self.completer.popup().sizeHintForColumn(0) + 
-                       self.completer.popup().verticalScrollBar().sizeHint().width())
-            self.completer.complete(cr)
-        else:
-            self.completer.popup().hide()
 
 # 定义工作线程类
 class QueryWorker(QRunnable):
@@ -627,6 +625,12 @@ class SqlQueryDialog(QDialog):
         self.security_utils = get_security_utils()
         self.history_manager = get_query_history_manager()
         self.thread_pool = QThreadPool()
+        
+        # 初始化元数据同步服务
+        self.metadata_sync_service = create_metadata_sync_service(
+            self.data_service.db_repository
+        )
+        
         self.setWindowTitle("SQL查询工具")
         self.resize(1200, 800)  # 增大窗口尺寸
         self.setModal(False)
@@ -909,7 +913,7 @@ class SqlQueryDialog(QDialog):
     
     def on_database_objects_loaded(self, tables_result, views_result):
         """
-        数据库对象加载完成回调
+        数据库对象加载完成回调 - 同时更新SQL智能补全器的元数据
         """
         try:
             # 清空树状控件
@@ -930,6 +934,9 @@ class SqlQueryDialog(QDialog):
             views_node.setText(0, "视图")
             views_node.setData(0, Qt.UserRole, "views")
             
+            # 准备元数据列表用于智能补全
+            tables_metadata = []
+            
             # 添加表
             if tables_result:
                 for row in tables_result:
@@ -938,6 +945,13 @@ class SqlQueryDialog(QDialog):
                         table_item = QTreeWidgetItem(tables_node)
                         table_item.setText(0, table_name)
                         table_item.setData(0, Qt.UserRole, f"table:{table_name}")
+                        # 添加到元数据列表
+                        tables_metadata.append({
+                            'name': table_name,
+                            'type': 'TABLE',
+                            'comment': '',
+                            'columns': []  # 列信息将在需要时异步加载
+                        })
                 tables_node.setExpanded(True)
             
             # 添加视图
@@ -948,17 +962,60 @@ class SqlQueryDialog(QDialog):
                         view_item = QTreeWidgetItem(views_node)
                         view_item.setText(0, view_name)
                         view_item.setData(0, Qt.UserRole, f"view:{view_name}")
+                        # 添加到元数据列表
+                        tables_metadata.append({
+                            'name': view_name,
+                            'type': 'VIEW',
+                            'comment': '',
+                            'columns': []
+                        })
                 views_node.setExpanded(True)
+            
+            # 更新SQL智能补全器的元数据
+            self._update_completer_metadata(tables_metadata)
+            
+            # 异步同步完整元数据（包含列信息）
+            self._sync_metadata_async()
             
             # 更新第一个标签页的表信息
             current_tab = self.get_current_tab()
             if current_tab:
                 self.show_available_tables_in_tab(current_tab)
             
-            self.status_bar.showMessage(f"数据库对象加载完成 (表: {len(tables_result) if tables_result else 0}, 视图: {len(views_result) if views_result else 0})")
+            self.status_bar.showMessage(f"数据库对象加载完成 (表: {len(tables_result) if tables_result else 0}, 视图: {len(views_result) if views_result else 0}) - 智能补全已更新")
             
         except Exception as e:
             self.status_bar.showMessage(f"显示数据库对象失败: {str(e)}")
+    
+    def _update_completer_metadata(self, tables_metadata: List[dict]):
+        """
+        更新所有标签页的SQL编辑器补全器元数据
+        
+        Args:
+            tables_metadata: 表元数据列表
+        """
+        try:
+            # 获取当前标签页并更新
+            current_tab = self.get_current_tab()
+            if current_tab and hasattr(current_tab, 'sql_edit'):
+                current_tab.sql_edit.update_metadata_cache(tables_metadata)
+                current_tab.sql_edit.set_connection_id('main_connection')
+        except Exception as e:
+            logger.warning(f"更新智能补全元数据失败: {e}")
+    
+    def _sync_metadata_async(self):
+        """
+        异步同步完整的数据库元数据（包含列信息）
+        """
+        try:
+            # 使用元数据同步服务获取完整元数据
+            success = self.metadata_sync_service.sync_metadata('main_connection')
+            if success:
+                logger.info("数据库元数据同步成功")
+            else:
+                logger.warning("数据库元数据同步失败")
+        except Exception as e:
+            logger.warning(f"异步同步元数据失败: {e}")
     
     def on_database_objects_error(self, error_message):
         """
