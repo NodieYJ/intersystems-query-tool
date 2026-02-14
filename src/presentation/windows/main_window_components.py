@@ -13,26 +13,7 @@ from PySide2.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QGroupBox, QVBoxLayout, QWidget
 )
 
-
-# 颜色系统 - UI/UX Pro Max 设计系统
-COLORS = {
-    'primary': '#2563EB',
-    'primary_hover': '#1D4ED8',
-    'primary_light': '#DBEAFE',
-    'secondary': '#3B82F6',
-    'success': '#10B981',
-    'warning': '#F59E0B',
-    'error': '#EF4444',
-    'info': '#3B82F6',
-    'background': '#F8FAFC',
-    'surface': '#FFFFFF',
-    'border': '#E2E8F0',
-    'divider': '#F1F5F9',
-    'text_primary': '#1E293B',
-    'text_secondary': '#64748B',
-    'text_disabled': '#94A3B8',
-    'text_inverse': '#FFFFFF',
-}
+from src.presentation.windows.ui_constants import COLORS
 
 
 class MainWindowComponents:

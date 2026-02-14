@@ -34,29 +34,9 @@ from src.business.services.query_history_manager import get_query_history_manage
 from src.infrastructure.utils.performance import EventCompressor, DeferredUpdater, get_optimizer
 from src.presentation.windows.main_window_components import MainWindowComponents
 from src.presentation.windows.main_window_pages import MainWindowPages
+from src.presentation.windows.ui_constants import COLORS
 
 logger = logging.getLogger(__name__)
-
-
-# 颜色系统 - UI/UX Pro Max 设计系统
-COLORS = {
-    'primary': '#2563EB',
-    'primary_hover': '#1D4ED8',
-    'primary_light': '#DBEAFE',
-    'secondary': '#3B82F6',
-    'success': '#10B981',
-    'warning': '#F59E0B',
-    'error': '#EF4444',
-    'info': '#3B82F6',
-    'background': '#F8FAFC',
-    'surface': '#FFFFFF',
-    'border': '#E2E8F0',
-    'divider': '#F1F5F9',
-    'text_primary': '#1E293B',
-    'text_secondary': '#64748B',
-    'text_disabled': '#94A3B8',
-    'text_inverse': '#FFFFFF',
-}
 
 
 # SQL语法高亮器
