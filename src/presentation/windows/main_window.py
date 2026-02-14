@@ -120,6 +120,17 @@ class MainWindow(QMainWindow):
     基于 UI/UX Pro Max 设计系统
     """
 
+    # 预声明页面创建过程中动态添加的属性（P1修复）
+    sql_editor: QTextEdit
+    result_table: QTableWidget
+    export_format: 'QComboBox'
+    export_filename: 'QLineEdit'
+    analysis_type: 'QComboBox'
+    analysis_result: QTextEdit
+    history_list: 'QListWidget'
+    scale_combo: 'QComboBox'
+    auto_connect_checkbox: 'QCheckBox'
+
     def __init__(self, scale_factor=1.0):
         """
         初始化主窗口

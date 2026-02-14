@@ -5,11 +5,12 @@
 主窗口页面模块
 
 包含6个功能页面的创建
-采用引用模式与主窗口协作，避免强耦合
+采用弱引用模式与主窗口协作，避免循环引用
 """
 
 import logging
-from typing import TYPE_CHECKING
+import weakref
+from typing import TYPE_CHECKING, Optional
 
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import (
@@ -50,7 +51,7 @@ class MainWindowPages:
     """
     主窗口页面创建类
 
-    负责创建6个功能页面，通过引用主窗口访问必要的属性和方法
+    负责创建6个功能页面，通过弱引用访问主窗口，避免循环引用
     这种设计允许页面创建逻辑与主窗口解耦，同时保持功能完整
     """
 
@@ -61,9 +62,15 @@ class MainWindowPages:
         Args:
             main_window: 主窗口实例，用于访问缩放方法、组件方法和事件处理
         """
-        self.main_window = main_window
+        # 使用弱引用避免循环引用（P0修复）
+        self._main_window_ref = weakref.ref(main_window)
         self.scaled = main_window.scaled
         self.components = main_window.components
+
+    @property
+    def main_window(self) -> Optional['MainWindow']:
+        """获取主窗口实例（弱引用）"""
+        return self._main_window_ref()
 
     def _create_overview_page(self) -> QWidget:
         """创建概览页面 - UI/UX Pro Max 设计"""
