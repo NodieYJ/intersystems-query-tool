@@ -107,8 +107,10 @@ class UIConfigDefaults:
     WINDOW_HEIGHT = 600
     
     # 布局边距
-    LAYOUT_MARGIN = 10
-    LAYOUT_SPACING = 5
+    # 注意：UI 布局间距已统一使用 src.presentation.windows.ui_constants.SPACING
+    # 这些常量已弃用，仅保留用于向后兼容
+    LAYOUT_MARGIN = 10  # DEPRECATED: 使用 ui_constants.SPACING['md']
+    LAYOUT_SPACING = 5   # DEPRECATED: 使用 ui_constants.SPACING['sm']
 
 
 class LoggingConfig:
