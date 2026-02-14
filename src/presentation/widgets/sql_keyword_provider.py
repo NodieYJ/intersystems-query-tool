@@ -27,12 +27,24 @@ class SQLKeywordProvider:
             keywords_file: 关键字 JSON 文件路径，默认为 resources/data/sql_keywords.json
         """
         if keywords_file is None:
-            # 计算默认路径
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-            keywords_file = os.path.join(base_dir, 'resources', 'data', 'sql_keywords.json')
+            keywords_file = self._get_default_keywords_path()
         
         self.keywords_file = keywords_file
         self.all_keywords = self._load_keywords()
+    
+    @staticmethod
+    def _get_default_keywords_path() -> str:
+        """
+        获取默认关键字文件路径
+        
+        Returns:
+            默认关键字文件绝对路径
+        """
+        # 获取当前文件所在目录
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # 向上导航到项目根目录 (src/presentation/widgets -> 项目根目录)
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        return os.path.join(project_root, 'resources', 'data', 'sql_keywords.json')
 
     def _load_keywords(self) -> List[str]:
         """

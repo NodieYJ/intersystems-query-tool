@@ -17,6 +17,11 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
+class MetadataCacheException(Exception):
+    """元数据缓存异常"""
+    pass
+
+
 class LocalMetadataCache:
     """
     本地元数据缓存管理器
@@ -152,10 +157,14 @@ class LocalMetadataCache:
                 conn.commit()
                 logger.info(f"Updated metadata for connection {connection_id}: {len(tables_data)} tables")
                 
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                conn.rollback()
+                logger.error(f"Database error updating metadata for {connection_id}: {e}", exc_info=True)
+                raise MetadataCacheException(f"Failed to update metadata: {e}") from e
             except Exception as e:
                 conn.rollback()
-                logger.error(f"Failed to update metadata: {e}")
-                raise
+                logger.critical(f"Unexpected error updating metadata for {connection_id}: {e}", exc_info=True)
+                raise MetadataCacheException(f"Unexpected error: {e}") from e
 
     def search_tables(self, connection_id: str, prefix: str, limit: int = 20) -> List[Tuple]:
         """

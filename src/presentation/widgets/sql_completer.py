@@ -9,13 +9,17 @@ SQL 智能补全组件
 """
 
 import re
-from typing import List, Optional
+import time
+import logging
+from typing import List, Optional, Tuple
 
 from PySide2.QtWidgets import QCompleter, QTextEdit
 from PySide2.QtCore import Qt, QStringListModel
 
 from presentation.widgets.sql_keyword_provider import SQLKeywordProvider, get_keyword_provider
 from business.services.metadata_cache_service import LocalMetadataCache, get_metadata_cache
+
+logger = logging.getLogger(__name__)
 
 
 class SQLCompleter(QCompleter):
@@ -28,6 +32,36 @@ class SQLCompleter(QCompleter):
     - 列名补全（基于上下文）
     - 上下文感知（根据当前位置提供合适的建议）
     """
+    
+    # 类级别编译的正则表达式（性能优化）
+    _TABLE_PATTERNS = [
+        re.compile(r'\bFROM\s+[\w.]*$', re.IGNORECASE),
+        re.compile(r'\bJOIN\s+[\w.]*$', re.IGNORECASE),
+        re.compile(r'\bINTO\s+[\w.]*$', re.IGNORECASE),
+        re.compile(r'\bTABLE\s+[\w.]*$', re.IGNORECASE),
+        re.compile(r'\bUPDATE\s+[\w.]*$', re.IGNORECASE),
+        re.compile(r'\bDELETE\s+FROM\s+[\w.]*$', re.IGNORECASE)
+    ]
+    
+    _COLUMN_PATTERNS = [
+        re.compile(r'\bSELECT\s+[\w\s,.]*$', re.IGNORECASE),
+        re.compile(r'\bWHERE\s+[\w\s=<>!]*$', re.IGNORECASE),
+        re.compile(r'\bGROUP\s+BY\s+[\w\s,]*$', re.IGNORECASE),
+        re.compile(r'\bORDER\s+BY\s+[\w\s,]*$', re.IGNORECASE),
+        re.compile(r'\bHAVING\s+[\w\s=<>!]*$', re.IGNORECASE),
+        re.compile(r'\bSET\s+[\w\s,=]*$', re.IGNORECASE)
+    ]
+    
+    _TABLE_NAME_PATTERNS = [
+        re.compile(r'\bFROM\s+(\w+)', re.IGNORECASE),
+        re.compile(r'\bJOIN\s+(\w+)', re.IGNORECASE),
+        re.compile(r'\bUPDATE\s+(\w+)', re.IGNORECASE),
+        re.compile(r'\bINTO\s+(\w+)', re.IGNORECASE)
+    ]
+    
+    # 缓存配置
+    _CACHE_TTL_SECONDS = 300  # 5分钟缓存过期
+    _MAX_SUGGESTIONS = 20
 
     def __init__(self, parent: QTextEdit, connection_id: str = 'default'):
         """
@@ -60,6 +94,11 @@ class SQLCompleter(QCompleter):
         
         # 连接信号
         self.activated.connect(self._insert_completion)
+        
+        # 缓存相关属性（性能优化）
+        self._table_cache: Optional[List[Tuple]] = None
+        self._cache_timestamp: float = 0
+        self._cache_connection_id: Optional[str] = None
 
     def update_connection(self, connection_id: str):
         """
@@ -152,7 +191,7 @@ class SQLCompleter(QCompleter):
 
     def _get_table_suggestions(self, prefix: str) -> List[str]:
         """
-        获取表名建议
+        获取表名建议（使用缓存优化）
         
         Args:
             prefix: 前缀
@@ -160,16 +199,27 @@ class SQLCompleter(QCompleter):
         Returns:
             格式化的表名建议列表
         """
-        tables = self.metadata_cache.search_tables(
-            self.connection_id, prefix, limit=10
-        )
+        # 使用缓存获取所有表，然后本地过滤（性能优化）
+        try:
+            all_tables = self._get_cached_tables()
+        except Exception as e:
+            logger.error(f"Failed to get cached tables: {e}")
+            return []
         
+        # 本地过滤匹配前缀的表
+        prefix_upper = prefix.upper()
         suggestions = []
-        for schema, name, type_, comment in tables:
-            display = f"{name} ({type_})"
-            if comment:
-                display += f" - {comment[:30]}"
-            suggestions.append(display)
+        
+        for table_info in all_tables:
+            # table_info: (schema_name, table_name, table_type)
+            if len(table_info) >= 3:
+                schema_name, name, type_ = table_info[0], table_info[1], table_info[2]
+                if name.upper().startswith(prefix_upper):
+                    display = f"{name} ({type_})"
+                    suggestions.append(display)
+                    
+                    if len(suggestions) >= 10:  # 限制结果数量
+                        break
         
         return suggestions
 
@@ -208,17 +258,8 @@ class SQLCompleter(QCompleter):
         Returns:
             是否需要表名
         """
-        patterns = [
-            r'\bFROM\s+[\w.]*$',
-            r'\bJOIN\s+[\w.]*$',
-            r'\bINTO\s+[\w.]*$',
-            r'\bTABLE\s+[\w.]*$',
-            r'\bUPDATE\s+[\w.]*$',
-            r'\bDELETE\s+FROM\s+[\w.]*$'
-        ]
-        
-        context_upper = context.upper()
-        return any(re.search(p, context_upper) for p in patterns)
+        # 使用类级别编译的正则表达式（性能优化）
+        return any(pattern.search(context) for pattern in self._TABLE_PATTERNS)
 
     def _needs_column_name(self, context: str) -> bool:
         """
@@ -230,21 +271,16 @@ class SQLCompleter(QCompleter):
         Returns:
             是否需要列名
         """
-        patterns = [
-            r'\bSELECT\s+[\w\s,.]*$',
-            r'\bWHERE\s+[\w\s=<>!]*$',
-            r'\bGROUP\s+BY\s+[\w\s,]*$',
-            r'\bORDER\s+BY\s+[\w\s,]*$',
-            r'\bHAVING\s+[\w\s=<>!]*$',
-            r'\bSET\s+[\w\s,=]*$'
-        ]
-        
-        context_upper = context.upper()
-        return any(re.search(p, context_upper) for p in patterns)
+        # 使用类级别编译的正则表达式（性能优化）
+        return any(pattern.search(context) for pattern in self._COLUMN_PATTERNS)
 
     def _extract_table_name(self, context: str) -> Optional[str]:
         """
         从上下文中提取表名
+        
+        Note:
+            当前仅支持简单的表名提取
+            不支持：子查询、表别名、CTE等复杂SQL
         
         Args:
             context: 当前行上下文
@@ -252,12 +288,47 @@ class SQLCompleter(QCompleter):
         Returns:
             表名，如果没有找到则返回 None
         """
-        # 尝试从 FROM 子句提取
-        match = re.search(r'\bFROM\s+(\w+)', context, re.IGNORECASE)
-        if match:
-            return match.group(1)
+        # 使用类级别编译的正则表达式（性能优化）
+        for pattern in self._TABLE_NAME_PATTERNS:
+            match = pattern.search(context)
+            if match:
+                return match.group(1)
         
-        # 尝试从 JOIN 子句提取
+        return None
+    
+    def _get_cached_tables(self) -> List[Tuple]:
+        """
+        获取缓存的表列表（带缓存机制）
+        
+        Returns:
+            表元组列表
+        """
+        current_time = time.time()
+        
+        # 检查缓存是否有效（5分钟内且连接ID未变）
+        if (self._table_cache is not None and 
+            self._cache_connection_id == self.connection_id and
+            current_time - self._cache_timestamp < self._CACHE_TTL_SECONDS):
+            return self._table_cache
+        
+        # 刷新缓存
+        try:
+            self._table_cache = self.metadata_cache.get_all_tables(self.connection_id)
+            self._cache_timestamp = current_time
+            self._cache_connection_id = self.connection_id
+            logger.debug(f"Refreshed table cache for {self.connection_id}: {len(self._table_cache)} tables")
+        except Exception as e:
+            logger.error(f"Failed to get table list: {e}")
+            return []
+        
+        return self._table_cache
+    
+    def clear_cache(self):
+        """清除表列表缓存"""
+        self._table_cache = None
+        self._cache_timestamp = 0
+        self._cache_connection_id = None
+        logger.debug("Table cache cleared")
         match = re.search(r'\bJOIN\s+(\w+)', context, re.IGNORECASE)
         if match:
             return match.group(1)
