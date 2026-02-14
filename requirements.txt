@@ -21,6 +21,7 @@ openpyxl>=3.0.0; python_version >= "3.8"
 # 测试依赖
 pytest>=6.0
 pytest-cov>=2.12
+pytest-qt>=4.0  # PySide2 UI 测试
 
 # 代码质量
 flake8>=4.0
