@@ -8,6 +8,10 @@
 
 ## 已完成任务 ✅
 
+### P0 架构重构
+- **P0-1: 拆分 main_window.py** ✅ 完成
+- **P0-2: 拆分 database_repository.py** ✅ 完成
+
 ### 1. ContextFS 插件安装
 - **状态**: ✅ 完成
 - **时间**: 2026-02-13
@@ -56,33 +60,7 @@
 
 ## 进行中任务 🔄
 
-### P0-1: 拆分 main_window.py
-- **状态**: ⏸️ 超时/暂停
-- **文件**: `src/presentation/windows/main_window.py` (1421行)
-- **目标**: 拆分为多个模块，遵循单一职责原则
-- **问题**: 任务持续超时，子代理无法完成大文件处理
-- **已分析**:
-  - 可拆分方法位置已定位
-  - 总计约662行可迁移
-
-**可拆分的方法列表**:
-
-| 方法 | 起始行 | 行数 | 建议模块 |
-|------|--------|------|----------|
-| `_create_overview_page` | 310 | 88 | main_window_pages.py |
-| `_create_sql_query_page` | 399 | 106 | main_window_pages.py |
-| `_create_data_download_page` | 505 | 116 | main_window_pages.py |
-| `_create_data_analysis_page` | 621 | 96 | main_window_pages.py |
-| `_create_history_page` | 717 | 66 | main_window_pages.py |
-| `_create_settings_page` | 783 | 106 | main_window_pages.py |
-| `_create_stat_card` | 889 | 23 | main_window_components.py |
-| `_create_activity_item` | 912 | 26 | main_window_components.py |
-| `_create_history_item` | 938 | 35 | main_window_components.py |
-
-**拆分方案**:
-1. 创建 `main_window_pages.py` - 包含所有页面创建方法
-2. 创建 `main_window_components.py` - 包含UI组件辅助方法
-3. 修改 `main_window.py` - 使用Mixin模式组合
+（暂无）
 
 ---
 
@@ -91,15 +69,22 @@
 ### 高优先级 (P0)
 
 #### P0-1: 拆分 main_window.py
-- **状态**: ⏸️ 进行中/超时
-- **阻塞原因**: 文件过大，子代理处理超时
-- **下一步**: 需要手动执行或调整策略
+- **状态**: ✅ 完成
+- **完成日期**: 2026-02-14
+- **文件**: 
+  - main_window.py: 821行 (原1421行)
+  - main_window_pages.py: 456行 (新增)
+  - main_window_components.py: 180行 (新增)
+- **实现方式**: 使用 Mixin/组合模式，页面创建委托给 MainWindowPages，组件创建委托给 MainWindowComponents
+- **验证**: 241个单元测试全部通过
 
 #### P0-2: 拆分 database_repository.py
-- **状态**: ⏹️ 未开始
-- **文件**: `src/data/repositories/database_repository.py` (1100+行)
-- **目标**: 分离连接池和查询逻辑
-- **依赖**: 等待 P0-1 完成
+- **状态**: ✅ 完成
+- **完成日期**: 2026-02-14
+- **文件**: 
+  - database_repository.py: 684行 (原1100+行)
+  - connection_pool.py: 已独立
+- **实现方式**: 连接池逻辑已分离到 connection_pool.py，database_repository 专注于查询执行
 
 ### 中优先级 (P1)
 
@@ -135,8 +120,7 @@
 2. **子代理处理能力**: 大文件拆分超出子代理处理范围
 
 ### 技术债务
-1. `main_window.py` 仍包含业务逻辑和UI逻辑混合
-2. `database_repository.py` 连接池和查询逻辑未分离
+1. `database_repository.py` 连接池和查询逻辑未分离
 
 ### 建议解决方案
 1. **方案A**: 跳过此任务，直接进入 database_repository.py 拆分
