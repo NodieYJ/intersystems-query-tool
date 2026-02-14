@@ -32,6 +32,7 @@ from src.infrastructure.utils.scaling_manager import get_scaling_manager
 from src.business.services.data_service import get_data_service
 from src.business.services.query_history_manager import get_query_history_manager
 from src.infrastructure.utils.performance import EventCompressor, DeferredUpdater, get_optimizer
+from src.presentation.windows.main_window_components import MainWindowComponents
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +151,9 @@ class MainWindow(QMainWindow):
 
         # 创建延迟更新器用于UI更新
         self.deferred_updater = self.optimizer.get_deferred_updater()
+
+        # 初始化UI组件类（重构第一阶段）
+        self.components = MainWindowComponents(self.scaled)
 
         # 设置窗口属性
         base_title = self.config_manager.get("application.name", "数据查询分析工具")
@@ -884,89 +888,19 @@ class MainWindow(QMainWindow):
 
         return scroll
 
-    # ==================== 辅助方法 ====================
+    # ==================== 辅助方法（已重构到 MainWindowComponents）====================
 
     def _create_stat_card(self, title, value, subtitle):
-        """创建统计卡片"""
-        card = QFrame()
-        card.setObjectName('stat_card')
-        card.setMinimumWidth(self.scaled(200))  # type: ignore
-
-        layout = QVBoxLayout(card)
-        layout.setSpacing(self.scaled(8))  # type: ignore
-
-        lbl_title = QLabel(title)
-        lbl_title.setObjectName('stat_title')
-        layout.addWidget(lbl_title)
-
-        lbl_value = QLabel(value)
-        lbl_value.setObjectName('stat_value')
-        layout.addWidget(lbl_value)
-
-        lbl_subtitle = QLabel(subtitle)
-        lbl_subtitle.setObjectName('stat_subtitle')
-        layout.addWidget(lbl_subtitle)
-
-        return card
+        """创建统计卡片 - 委托给 MainWindowComponents"""
+        return self.components._create_stat_card(title, value, subtitle)
 
     def _create_activity_item(self, icon, title, desc, time):
-        """创建活动项"""
-        item = QWidget()
-        item_layout = QHBoxLayout(item)
-        item_layout.setContentsMargins(0, 8, 0, 8)  # type: ignore
-
-        lbl_icon = QLabel(icon)
-        lbl_icon.setStyleSheet('font-size: 16px;')  # type: ignore
-        item_layout.addWidget(lbl_icon)
-
-        lbl_title = QLabel(f'<b>{title}</b>')
-        lbl_title.setStyleSheet(f'color: {COLORS["text_primary"]};')  # type: ignore
-        item_layout.addWidget(lbl_title)
-
-        lbl_desc = QLabel(desc)
-        lbl_desc.setStyleSheet(f'color: {COLORS["text_secondary"]};')  # type: ignore
-        item_layout.addWidget(lbl_desc)
-
-        item_layout.addStretch()
-
-        lbl_time = QLabel(time)
-        lbl_time.setStyleSheet(f'color: {COLORS["text_disabled"]}; font-size: 12px;')  # type: ignore
-        item_layout.addWidget(lbl_time)
-
-        return item
+        """创建活动项 - 委托给 MainWindowComponents"""
+        return self.components._create_activity_item(icon, title, desc, time)
 
     def _create_history_item(self, sql, rows, time, status):
-        """创建历史记录项"""
-        item = QWidget()
-        item_layout = QHBoxLayout(item)
-        item_layout.setContentsMargins(0, 8, 0, 8)  # type: ignore
-
-        # SQL 语句
-        lbl_sql = QLabel(sql[:50] + '...' if len(sql) > 50 else sql)
-        lbl_sql.setStyleSheet(f'color: {COLORS["primary"]}; font-family: monospace;')  # type: ignore
-        item_layout.addWidget(lbl_sql)
-
-        item_layout.addStretch()
-
-        # 行数
-        lbl_rows = QLabel(rows)
-        lbl_rows.setStyleSheet(f'color: {COLORS["text_secondary"]};')  # type: ignore
-        item_layout.addWidget(lbl_rows)
-
-        # 时间
-        lbl_time = QLabel(time)
-        lbl_time.setStyleSheet(f'color: {COLORS["text_disabled"]}; font-size: 12px;')  # type: ignore
-        item_layout.addWidget(lbl_time)
-
-        # 状态
-        lbl_status = QLabel(status)
-        if status == '成功':
-            lbl_status.setStyleSheet(f'color: {COLORS["success"]}; font-weight: 600;')  # type: ignore
-        else:
-            lbl_status.setStyleSheet(f'color: {COLORS["error"]}; font-weight: 600;')  # type: ignore
-        item_layout.addWidget(lbl_status)
-
-        return item
+        """创建历史记录项 - 委托给 MainWindowComponents"""
+        return self.components._create_history_item(sql, rows, time, status)
 
     # ==================== 功能方法 ====================
 
