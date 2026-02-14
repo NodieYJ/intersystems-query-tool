@@ -68,9 +68,15 @@ class MainWindowPages:
         self.components = main_window.components
 
     @property
-    def main_window(self) -> Optional['MainWindow']:
+    def main_window(self) -> 'MainWindow':
         """获取主窗口实例（弱引用）"""
-        return self._main_window_ref()
+        mw = self._main_window_ref()
+        if mw is None:
+            raise RuntimeError(
+                "MainWindow has been garbage collected. "
+                "Ensure MainWindow outlives MainWindowPages."
+            )
+        return mw
 
     def _create_overview_page(self) -> QWidget:
         """创建概览页面 - UI/UX Pro Max 设计"""
