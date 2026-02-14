@@ -642,7 +642,7 @@ class SqlQueryDialog(QDialog):
         # 数据库连接区域
         db_layout = QHBoxLayout()
         self.db_path_label = QLabel("已连接到配置的数据库")
-        self.db_path_label.setStyleSheet("color: green;")
+        self.db_path_label.setStyleSheet(f"color: {COLORS['success']};")
         connect_btn = QPushButton("重新连接")
         connect_btn.clicked.connect(self.reconnect_database)
         
@@ -836,7 +836,7 @@ class SqlQueryDialog(QDialog):
             success = self.data_service.test_connection()
             if success:
                 self.db_path_label.setText("已重新连接到数据库")
-                self.db_path_label.setStyleSheet("color: green;")
+                self.db_path_label.setStyleSheet(f"color: {COLORS['success']};")
                 self.update_status_bar('connection', '已连接')
                 self.update_status_bar('message', '数据库连接成功')
                 self.update_status_bar('server', 'Intersystems IRIS')
@@ -849,13 +849,13 @@ class SqlQueryDialog(QDialog):
                     self.show_available_tables_in_tab(current_tab)
             else:
                 self.db_path_label.setText("数据库连接失败")
-                self.db_path_label.setStyleSheet("color: red;")
+                self.db_path_label.setStyleSheet(f"color: {COLORS['error']};")
                 self.update_status_bar('connection', '连接失败')
                 self.update_status_bar('message', '数据库连接失败')
                 QMessageBox.critical(self, "连接失败", "无法连接到数据库，请检查配置")
         except Exception as e:
             self.db_path_label.setText("连接失败")
-            self.db_path_label.setStyleSheet("color: red;")
+            self.db_path_label.setStyleSheet(f"color: {COLORS['error']};")
             self.update_status_bar('connection', '连接失败')
             self.update_status_bar('message', f'连接错误: {str(e)}')
             QMessageBox.critical(self, "数据库连接错误", f"连接数据库失败:\n{str(e)}")
